@@ -21,6 +21,9 @@ export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
 
 // Route Permissions - Single source of truth for route access control
 export const ROUTE_PERMISSIONS = {
+    // Dashboard - accessible by all authenticated users
+    '/dashboard': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+
     // Doctor routes (both roles can access)
     '/patients': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
     '/predictions': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],

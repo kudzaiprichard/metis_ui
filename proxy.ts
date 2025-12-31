@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ROUTE_PERMISSIONS } from '@/lib/constants';
+import { ROUTE_PERMISSIONS, getApiBaseUrl } from '@/lib/constants';
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/register', '/unauthorized'];
@@ -10,8 +10,10 @@ const PUBLIC_ROUTES = ['/login', '/register', '/unauthorized'];
  * Makes an actual request to the backend to validate the token
  */
 async function verifyToken(token: string): Promise<{ role?: string } | null> {
+    const apiUrl = getApiBaseUrl();
+
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+        const response = await fetch(`${apiUrl}/auth/me`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
@@ -45,7 +47,7 @@ function hasPermission(userRole: string, pathname: string): boolean {
     return true;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Allow public routes
@@ -86,6 +88,7 @@ export async function middleware(request: NextRequest) {
 
     // Check role-based permissions using ROUTE_PERMISSIONS from constants
     const userRole = user.role;
+
     if (userRole && !hasPermission(userRole, pathname)) {
         // User doesn't have permission - redirect to unauthorized page
         return NextResponse.redirect(new URL('/unauthorized', request.url));
@@ -95,7 +98,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
 }
 
-// Configure which routes the middleware runs on
+// Configure which routes the proxy runs on
 export const config = {
     matcher: [
         /*
