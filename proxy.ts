@@ -68,17 +68,24 @@ export async function proxy(request: NextRequest) {
     // Get access token from cookies
     const token = request.cookies.get('access_token')?.value;
 
-    // Redirect to unauthorized if no token
+    // Redirect to login if no token (not authenticated)
     if (!token) {
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('redirect', pathname);
+        loginUrl.searchParams.set('error', 'Please log in to continue');
+        return NextResponse.redirect(loginUrl);
     }
 
     // Verify token with backend
     const user = await verifyToken(token);
 
-    // Invalid or expired token - clear cookies and redirect to unauthorized
+    // Invalid or expired token - clear cookies and redirect to login (not authenticated)
     if (!user) {
-        const response = NextResponse.redirect(new URL('/unauthorized', request.url));
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('redirect', pathname);
+        loginUrl.searchParams.set('error', 'Your session has expired. Please log in again');
+
+        const response = NextResponse.redirect(loginUrl);
         // Clear invalid tokens from cookies
         response.cookies.delete('access_token');
         response.cookies.delete('refresh_token');
@@ -90,7 +97,7 @@ export async function proxy(request: NextRequest) {
     const userRole = user.role;
 
     if (userRole && !hasPermission(userRole, pathname)) {
-        // User doesn't have permission - redirect to unauthorized page
+        // User is authenticated but doesn't have permission - redirect to unauthorized (not authorized)
         return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 

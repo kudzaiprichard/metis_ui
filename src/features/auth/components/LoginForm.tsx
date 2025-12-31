@@ -108,7 +108,7 @@ export function LoginForm() {
                 </div>
 
                 <p className="footer-text">
-                    Don't have an account? <a href="/register" className="footer-link">Contact Administrator</a>
+                    Don`t have an account? <a href="/register" className="footer-link">Contact Administrator</a>
                 </p>
             </div>
 
