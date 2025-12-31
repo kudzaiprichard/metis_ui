@@ -1,6 +1,26 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { getApiBaseUrl, API_CONFIG, STORAGE_KEYS, HTTP_STATUS } from './constants';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { getApiBaseUrl, API_CONFIG, COOKIE_NAMES, HTTP_STATUS, API_ROUTES } from './constants';
 import { ApiResponse, ApiError } from './types';
+import Cookies from 'js-cookie';
+
+// Flag to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{
+    resolve: (value?: unknown) => void;
+    reject: (reason?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+
+    failedQueue = [];
+};
 
 // Create axios instance
 const axiosInstance: AxiosInstance = axios.create({
@@ -14,10 +34,8 @@ const axiosInstance: AxiosInstance = axios.create({
 // Request interceptor - Add auth token to requests
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Get access token from localStorage
-        const token = typeof window !== 'undefined'
-            ? localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)
-            : null;
+        // Get access token from cookies
+        const token = Cookies.get(COOKIE_NAMES.ACCESS_TOKEN);
 
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -42,7 +60,9 @@ axiosInstance.interceptors.response.use(
 
         return response;
     },
-    (error: AxiosError<ApiResponse<unknown>>) => {
+    async (error: AxiosError<ApiResponse<unknown>>) => {
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
         // Check if response has backend ApiResponse format
         if (error.response?.data && typeof error.response.data === 'object') {
             const data = error.response.data;
@@ -51,15 +71,86 @@ axiosInstance.interceptors.response.use(
             if (data.success === false && data.error) {
                 const apiError = new ApiError(data.error, data.message);
 
-                // Handle 401 Unauthorized - clear tokens and redirect to login
-                if (apiError.statusCode === HTTP_STATUS.UNAUTHORIZED) {
-                    if (typeof window !== 'undefined') {
-                        localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-                        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-                        localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+                // Handle 401 Unauthorized - Try to refresh token
+                if (apiError.statusCode === HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry) {
+                    if (isRefreshing) {
+                        // If already refreshing, queue this request
+                        return new Promise((resolve, reject) => {
+                            failedQueue.push({ resolve, reject });
+                        }).then(() => {
+                            return axiosInstance(originalRequest);
+                        }).catch(err => {
+                            return Promise.reject(err);
+                        });
+                    }
 
-                        // Redirect to login page
-                        window.location.href = '/login';
+                    originalRequest._retry = true;
+                    isRefreshing = true;
+
+                    const refreshToken = Cookies.get(COOKIE_NAMES.REFRESH_TOKEN);
+
+                    if (!refreshToken) {
+                        // No refresh token - logout
+                        isRefreshing = false;
+                        processQueue(apiError, null);
+                        clearAuthAndRedirect();
+                        return Promise.reject(apiError);
+                    }
+
+                    try {
+                        // Call refresh endpoint
+                        const response = await axios.post<ApiResponse<{
+                            tokens: {
+                                access_token: {
+                                    token: string;
+                                    expires_at: string;
+                                };
+                                refresh_token: {
+                                    token: string;
+                                };
+                            };
+                        }>>(
+                            `${getApiBaseUrl()}${API_ROUTES.AUTH.REFRESH}`,
+                            { refresh_token: refreshToken }
+                        );
+
+                        if (response.data.success && response.data.value) {
+                            const { access_token, refresh_token } = response.data.value.tokens;
+
+                            // Update cookies with new tokens
+                            const accessExpiry = new Date(access_token.expires_at);
+                            Cookies.set(COOKIE_NAMES.ACCESS_TOKEN, access_token.token, {
+                                expires: accessExpiry,
+                                path: '/',
+                                sameSite: 'lax',
+                                secure: process.env.NODE_ENV === 'production',
+                            });
+
+                            Cookies.set(COOKIE_NAMES.REFRESH_TOKEN, refresh_token.token, {
+                                expires: 30,
+                                path: '/',
+                                sameSite: 'lax',
+                                secure: process.env.NODE_ENV === 'production',
+                            });
+
+                            // Update authorization header
+                            originalRequest.headers.Authorization = `Bearer ${access_token.token}`;
+
+                            isRefreshing = false;
+                            processQueue(null, access_token.token);
+
+                            // Retry original request
+                            return axiosInstance(originalRequest);
+                        } else {
+                            // Refresh failed
+                            throw new Error('Token refresh failed');
+                        }
+                    } catch (refreshError) {
+                        // Refresh failed - logout
+                        isRefreshing = false;
+                        processQueue(refreshError, null);
+                        clearAuthAndRedirect();
+                        return Promise.reject(apiError);
                     }
                 }
 
@@ -97,6 +188,17 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(genericError);
     }
 );
+
+/**
+ * Clear auth cookies and redirect to login
+ */
+function clearAuthAndRedirect() {
+    if (typeof window !== 'undefined') {
+        Cookies.remove(COOKIE_NAMES.ACCESS_TOKEN);
+        Cookies.remove(COOKIE_NAMES.REFRESH_TOKEN);
+        window.location.href = '/login';
+    }
+}
 
 // API Client with typed methods
 class ApiClient {

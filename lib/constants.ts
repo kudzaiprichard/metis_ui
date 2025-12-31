@@ -11,6 +11,28 @@ export const getApiBaseUrl = (): string => {
     return isDevelopment ? API_CONFIG.DEV_BASE_URL : API_CONFIG.PROD_BASE_URL;
 };
 
+// User Roles
+export const USER_ROLES = {
+    DOCTOR: 'DOCTOR',
+    ML_ENGINEER: 'ML_ENGINEER',
+} as const;
+
+export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
+
+// Route Permissions - Single source of truth for route access control
+export const ROUTE_PERMISSIONS = {
+    // Doctor routes (both roles can access)
+    '/patients': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+    '/predictions': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+    '/monitoring': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+    '/similar-patients': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+
+    // ML Team routes (ML_ENGINEER only)
+    '/models': [USER_ROLES.ML_ENGINEER],
+    '/training': [USER_ROLES.ML_ENGINEER],
+    '/playground': [USER_ROLES.ML_ENGINEER],
+} as const;
+
 // API Routes
 export const API_ROUTES = {
     AUTH: {
@@ -44,11 +66,17 @@ export const API_ROUTES = {
     },
 } as const;
 
-// Local Storage Keys
-export const STORAGE_KEYS = {
+// Cookie Names (for secure token storage)
+export const COOKIE_NAMES = {
     ACCESS_TOKEN: 'access_token',
     REFRESH_TOKEN: 'refresh_token',
-    USER_DATA: 'user_data',
+} as const;
+
+// Cookie Options
+export const COOKIE_OPTIONS = {
+    path: '/',
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production', // Only HTTPS in production
 } as const;
 
 // HTTP Status Codes
@@ -62,11 +90,3 @@ export const HTTP_STATUS = {
     NOT_FOUND: 404,
     INTERNAL_SERVER_ERROR: 500,
 } as const;
-
-// User Roles
-export const USER_ROLES = {
-    DOCTOR: 'DOCTOR',
-    ML_ENGINEER: 'ML_ENGINEER',
-} as const;
-
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
