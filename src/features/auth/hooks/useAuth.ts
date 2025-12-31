@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../api/auth.api';
-import { LoginRequest, RegisterRequest, AuthResponse, User } from '../api/auth.types';
+import { LoginRequest, RegisterRequest, AuthResponse } from '../api/auth.types';
 import { setAuthTokens, clearAuthTokens } from '@/lib/utils/auth';
 import { ApiError } from '@/lib/types';
 
