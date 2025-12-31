@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../api/auth.api';
 import { LoginRequest, RegisterRequest, AuthResponse } from '../api/auth.types';
-import { setAuthTokens, clearAuthTokens } from '@/lib/utils/auth';
+import { setAuthTokens, clearAuthTokens, isAuthenticated } from '@/lib/utils/auth';
 import { ApiError } from '@/lib/types';
 
 /**
@@ -26,6 +26,7 @@ export const useCurrentUser = () => {
         queryFn: authApi.getMe,
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: false, // Don't retry if unauthorized
+        enabled: isAuthenticated(), //  Only fetch if token exists
     });
 };
 
@@ -51,7 +52,7 @@ export const useLogin = () => {
 
             // Redirect to dashboard or intended page
             const redirect = new URLSearchParams(window.location.search).get('redirect');
-            router.push(redirect || '/patients');
+            router.push(redirect || '/dashboard');
         },
         onError: (error: ApiError) => {
             console.error('Login failed:', error.getAllMessages());
@@ -80,7 +81,7 @@ export const useRegister = () => {
             queryClient.setQueryData(authKeys.me, data.user);
 
             // Redirect to dashboard
-            router.push('/patients');
+            router.push('/dashboard');
         },
         onError: (error: ApiError) => {
             console.error('Registration failed:', error.getAllMessages());
