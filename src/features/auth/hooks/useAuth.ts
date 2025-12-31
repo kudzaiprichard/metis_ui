@@ -7,8 +7,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../api/auth.api';
 import { LoginRequest, RegisterRequest, AuthResponse } from '../api/auth.types';
-import { setAuthTokens, clearAuthTokens, isAuthenticated } from '@/lib/utils/auth';
-import { ApiError } from '@/lib/types';
+import { setAuthTokens, clearAuthTokens, isAuthenticated } from '@/src/lib/utils/auth';
+import { ApiError } from '@/src/lib/types';
 
 /**
  * Query keys for auth

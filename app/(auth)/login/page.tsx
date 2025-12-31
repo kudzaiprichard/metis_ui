@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef } from 'react';
 import { LoginForm } from "@/src/features/auth/components/LoginForm";
 import { useSearchParams } from 'next/navigation';
-import { useToast } from '@/components/shared/ui/toast';
+import { useToast } from '@/src/components/shared/ui/toast';
 
 function LoginContent() {
     const searchParams = useSearchParams();

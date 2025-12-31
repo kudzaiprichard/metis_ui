@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ROUTE_PERMISSIONS, getApiBaseUrl } from '@/lib/constants';
+import { ROUTE_PERMISSIONS, getApiBaseUrl } from '@/src/lib/constants';
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/register', '/unauthorized'];

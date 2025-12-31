@@ -7,8 +7,8 @@
 
 import { useState, FormEvent } from 'react';
 import { useLogin } from '../hooks/useAuth';
-import { useToast } from '@/components/shared/ui/toast';
-import { ApiError } from '@/lib/types';
+import { useToast } from '@/src/components/shared/ui/toast';
+import { ApiError } from '@/src/lib/types';
 
 export function LoginForm() {
     const [email, setEmail] = useState('');

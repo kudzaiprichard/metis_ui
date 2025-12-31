@@ -6,8 +6,8 @@
 'use client';
 
 import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '@/lib/query-client';
-import { ToastProvider } from '@/components/shared/ui/toast';
+import { queryClient } from '@/src/lib/query-client';
+import { ToastProvider } from '@/src/components/shared/ui/toast';
 import { AuthChecker } from './AuthChecker';
 
 export function Providers({ children }: { children: React.ReactNode }) {

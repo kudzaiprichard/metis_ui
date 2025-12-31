@@ -3,8 +3,8 @@
  * Handles authentication-related API calls
  */
 
-import { apiClient } from '@/lib/api-client';
-import { API_ROUTES } from '@/lib/constants';
+import { apiClient } from '@/src/lib/api-client';
+import { API_ROUTES } from '@/src/lib/constants';
 import {
     LoginRequest,
     RegisterRequest,
