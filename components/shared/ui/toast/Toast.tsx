@@ -93,7 +93,9 @@ export function Toast({ toast, onClose }: ToastProps) {
 
             <style jsx>{`
                 .toast {
-                    min-width: 320px;
+                    width: 380px;
+                    max-width: 380px;
+                    min-height: 64px;
                     padding: 16px 20px;
                     background: rgba(10, 31, 26, 0.95);
                     backdrop-filter: blur(24px);
@@ -104,7 +106,7 @@ export function Toast({ toast, onClose }: ToastProps) {
                             0 8px 16px rgba(0, 0, 0, 0.3),
                             inset 0 1px 0 rgba(255, 255, 255, 0.1);
                     display: flex;
-                    align-items: center;
+                    align-items: flex-start;
                     gap: 12px;
                     opacity: 0;
                     transform: translateX(400px);
@@ -132,32 +134,42 @@ export function Toast({ toast, onClose }: ToastProps) {
                 .toast-icon {
                     width: 24px;
                     height: 24px;
+                    min-width: 24px;
                     border-radius: 50%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     flex-shrink: 0;
+                    margin-top: 2px;
                 }
 
                 .toast-content {
                     flex: 1;
+                    min-width: 0;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
 
                 .toast-title {
                     font-size: 14px;
                     font-weight: 600;
                     color: #ffffff;
-                    margin-bottom: 2px;
+                    margin-bottom: 4px;
+                    word-wrap: break-word;
                 }
 
                 .toast-message {
                     font-size: 13px;
                     color: rgba(255, 255, 255, 0.7);
+                    line-height: 1.5;
+                    word-wrap: break-word;
+                    white-space: pre-wrap;
                 }
 
                 .toast-close {
                     width: 20px;
                     height: 20px;
+                    min-width: 20px;
                     border: none;
                     background: transparent;
                     color: rgba(255, 255, 255, 0.5);
@@ -168,6 +180,7 @@ export function Toast({ toast, onClose }: ToastProps) {
                     border-radius: 4px;
                     transition: all 0.2s ease;
                     flex-shrink: 0;
+                    margin-top: 2px;
                 }
 
                 .toast-close:hover {
