@@ -9,6 +9,7 @@ import { authApi } from '../api/auth.api';
 import { LoginRequest, RegisterRequest, AuthResponse } from '../api/auth.types';
 import { setAuthTokens, clearAuthTokens, isAuthenticated } from '@/src/lib/utils/auth';
 import { ApiError } from '@/src/lib/types';
+import { queueToast } from '@/src/lib/utils/toast-bridge';
 
 /**
  * Query keys for auth
@@ -26,7 +27,7 @@ export const useCurrentUser = () => {
         queryFn: authApi.getMe,
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: false, // Don't retry if unauthorized
-        enabled: isAuthenticated(), //  Only fetch if token exists
+        enabled: isAuthenticated(), // Only fetch if token exists
     });
 };
 
@@ -38,7 +39,10 @@ export const useLogin = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
+        mutationFn: async (credentials: LoginRequest) => {
+            const result = await authApi.login(credentials);
+            return result;
+        },
         onSuccess: (data: AuthResponse) => {
             // Store tokens in cookies
             setAuthTokens(
@@ -50,12 +54,21 @@ export const useLogin = () => {
             // Cache user data
             queryClient.setQueryData(authKeys.me, data.user);
 
+            // Queue success toast for next page (ToastBridge will display it)
+            queueToast(
+                'Welcome Back!',
+                `Welcome back, ${data.user.first_name}!`,
+                'success'
+            );
+
             // Redirect to dashboard or intended page
             const redirect = new URLSearchParams(window.location.search).get('redirect');
             router.push(redirect || '/dashboard');
         },
         onError: (error: ApiError) => {
-            console.error('Login failed:', error.getMessage());
+            console.error('Login failed:', error.getFullMessage());
+            // Note: Error toasts on same page are handled in LoginForm
+            // No need to queue here since we're not navigating away
         },
     });
 };
@@ -80,11 +93,19 @@ export const useRegister = () => {
             // Cache user data
             queryClient.setQueryData(authKeys.me, data.user);
 
+            // Queue welcome toast for next page
+            queueToast(
+                'Account Created!',
+                `Welcome to the platform, ${data.user.first_name}!`,
+                'success'
+            );
+
             // Redirect to dashboard
             router.push('/dashboard');
         },
         onError: (error: ApiError) => {
-            console.error('Registration failed:', error.getMessage());
+            console.error('Registration failed:', error.getFullMessage());
+            // Error handling in registration form (if you have one)
         },
     });
 };
@@ -108,6 +129,13 @@ export const useLogout = () => {
             // Clear all queries (fresh state)
             queryClient.clear();
 
+            // Queue logout toast for login page
+            queueToast(
+                'Logged Out',
+                'You have been successfully logged out',
+                'success'
+            );
+
             // Redirect to login
             router.push('/login');
         },
@@ -115,9 +143,18 @@ export const useLogout = () => {
             // Even if logout API fails, clear local data
             clearAuthTokens();
             queryClient.clear();
+
+            // Queue error toast
+            queueToast(
+                'Logout Error',
+                'An error occurred, but you have been logged out',
+                'error'
+            );
+
+            // Redirect to login
             router.push('/login');
 
-            console.error('Logout error:', error.getMessage());
+            console.error('Logout error:', error.getFullMessage());
         },
     });
 };

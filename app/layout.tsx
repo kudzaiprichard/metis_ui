@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/src/components/providers/Providers";
+import {ToastBridge} from "@/src/components/shared/ui/toast";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -31,6 +32,8 @@ export default function RootLayout({
         <div className="orb orb3"></div>
 
         <Providers>
+            {/* Global ToastBridge - Automatically shows toasts queued during navigation */}
+            <ToastBridge />
             {children}
         </Providers>
         </body>

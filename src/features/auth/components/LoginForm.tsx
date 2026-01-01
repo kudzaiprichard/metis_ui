@@ -28,6 +28,8 @@ export function LoginForm() {
         }
 
         // Call login mutation
+        // Success toast is queued in useLogin hook and will show on next page
+        // Error toast shows immediately on this page
         login.mutate(
             { email, password },
             {
