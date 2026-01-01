@@ -55,7 +55,7 @@ export const useLogin = () => {
             router.push(redirect || '/dashboard');
         },
         onError: (error: ApiError) => {
-            console.error('Login failed:', error.getAllMessages());
+            console.error('Login failed:', error.getMessage());
         },
     });
 };
@@ -84,7 +84,7 @@ export const useRegister = () => {
             router.push('/dashboard');
         },
         onError: (error: ApiError) => {
-            console.error('Registration failed:', error.getAllMessages());
+            console.error('Registration failed:', error.getMessage());
         },
     });
 };
@@ -117,7 +117,7 @@ export const useLogout = () => {
             queryClient.clear();
             router.push('/login');
 
-            console.error('Logout error:', error.getAllMessages());
+            console.error('Logout error:', error.getMessage());
         },
     });
 };

@@ -3,6 +3,14 @@ import { getApiBaseUrl, API_CONFIG, COOKIE_NAMES, HTTP_STATUS, API_ROUTES } from
 import { ApiResponse, ApiError } from './types';
 import Cookies from 'js-cookie';
 
+/**
+ * Custom Axios config interface with retry flags
+ */
+interface CustomAxiosConfig extends InternalAxiosRequestConfig {
+    _retry?: boolean;           // Tracks if request has been retried
+    _skipAuthRetry?: boolean;   // Flag to skip automatic token refresh retry
+}
+
 // Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -10,6 +18,9 @@ let failedQueue: Array<{
     reject: (reason?: unknown) => void;
 }> = [];
 
+/**
+ * Process queued requests after token refresh
+ */
 const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue.forEach(prom => {
         if (error) {
@@ -22,7 +33,9 @@ const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue = [];
 };
 
-// Create axios instance
+/**
+ * Create axios instance with base configuration
+ */
 const axiosInstance: AxiosInstance = axios.create({
     baseURL: getApiBaseUrl(),
     timeout: API_CONFIG.TIMEOUT,
@@ -31,7 +44,9 @@ const axiosInstance: AxiosInstance = axios.create({
     },
 });
 
-// Request interceptor - Add auth token to requests
+/**
+ * Request interceptor - Add auth token to requests
+ */
 axiosInstance.interceptors.request.use(
     (config) => {
         // Get access token from cookies
@@ -48,12 +63,13 @@ axiosInstance.interceptors.request.use(
     }
 );
 
-// Response interceptor - Handle backend ApiResponse format and errors
+/**
+ * Response interceptor - Handle backend ApiResponse format and errors
+ */
 axiosInstance.interceptors.response.use(
     (response: AxiosResponse<ApiResponse<unknown>>) => {
-        // Check if backend returned success: false
+        // Check if backend returned success: false in a 200 response
         if (response.data && response.data.success === false && response.data.error) {
-            // Backend returned an error in ApiResponse format
             const apiError = new ApiError(response.data.error, response.data.message);
             return Promise.reject(apiError);
         }
@@ -61,7 +77,7 @@ axiosInstance.interceptors.response.use(
         return response;
     },
     async (error: AxiosError<ApiResponse<unknown>>) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as CustomAxiosConfig;
 
         // Check if response has backend ApiResponse format
         if (error.response?.data && typeof error.response.data === 'object') {
@@ -71,10 +87,24 @@ axiosInstance.interceptors.response.use(
             if (data.success === false && data.error) {
                 const apiError = new ApiError(data.error, data.message);
 
-                // Handle 401 Unauthorized - Try to refresh token
+                // ========== SAFEGUARD 1: Prevent infinite loop on refresh failures ==========
+                // If the refresh endpoint itself fails, don't try to refresh again
+                if (originalRequest.url?.includes('/auth/refresh')) {
+                    clearAuthAndRedirect();
+                    return Promise.reject(apiError);
+                }
+
+                // ========== SAFEGUARD 2: Check for skip retry flag ==========
+                // Allow individual requests to opt-out of automatic token refresh
+                // This is used for auth endpoints where 401 is expected (wrong credentials)
+                if (originalRequest._skipAuthRetry) {
+                    return Promise.reject(apiError);
+                }
+
+                // ========== Handle 401 on protected endpoints - Try to refresh token ==========
                 if (apiError.statusCode === HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry) {
+                    // If already refreshing, queue this request
                     if (isRefreshing) {
-                        // If already refreshing, queue this request
                         return new Promise((resolve, reject) => {
                             failedQueue.push({ resolve, reject });
                         }).then(() => {
@@ -89,8 +119,8 @@ axiosInstance.interceptors.response.use(
 
                     const refreshToken = Cookies.get(COOKIE_NAMES.REFRESH_TOKEN);
 
+                    // No refresh token available - clear auth and redirect
                     if (!refreshToken) {
-                        // No refresh token - logout
                         isRefreshing = false;
                         processQueue(apiError, null);
                         clearAuthAndRedirect();
@@ -139,14 +169,13 @@ axiosInstance.interceptors.response.use(
                             isRefreshing = false;
                             processQueue(null, access_token.token);
 
-                            // Retry original request
+                            // Retry original request with new token
                             return axiosInstance(originalRequest);
                         } else {
-                            // Refresh failed
                             throw new Error('Token refresh failed');
                         }
                     } catch (refreshError) {
-                        // Refresh failed - logout
+                        // Refresh failed - clear auth and redirect
                         isRefreshing = false;
                         processQueue(refreshError, null);
                         clearAuthAndRedirect();
@@ -158,9 +187,8 @@ axiosInstance.interceptors.response.use(
             }
         }
 
-        // Handle network errors or other non-API errors
+        // Handle network errors (no response from server)
         if (!error.response) {
-            // Network error
             const networkError = new ApiError(
                 {
                     title: 'Network Error',
@@ -200,7 +228,10 @@ function clearAuthAndRedirect() {
     }
 }
 
-// API Client with typed methods
+/**
+ * API Client with typed methods
+ * Automatically unwraps ApiResponse<T> to return T
+ */
 class ApiClient {
     /**
      * GET request - Returns the value from ApiResponse

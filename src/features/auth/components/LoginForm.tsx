@@ -32,7 +32,7 @@ export function LoginForm() {
             { email, password },
             {
                 onError: (error: ApiError) => {
-                    showToast('Login Failed', error.getAllMessages(), 'error');
+                    showToast('Login Failed', error.getMessage(), 'error');
                 },
             }
         );

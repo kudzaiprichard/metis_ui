@@ -21,22 +21,28 @@ export const authApi = {
     /**
      * Login user
      * POST /auth/login
+     * Note: _skipAuthRetry flag prevents automatic token refresh on 401
+     * (401 here means wrong credentials, not expired token)
      */
     login: (credentials: LoginRequest): Promise<AuthResponse> => {
         return apiClient.post<AuthResponse, LoginRequest>(
             API_ROUTES.AUTH.LOGIN,
-            credentials
+            credentials,
+            { _skipAuthRetry: true } as any  // Skip auto-retry for login endpoint
         );
     },
 
     /**
      * Register new user
      * POST /auth/register
+     * Note: _skipAuthRetry flag prevents automatic token refresh on 401
+     * (401 here means validation error, not expired token)
      */
     register: (data: RegisterRequest): Promise<AuthResponse> => {
         return apiClient.post<AuthResponse, RegisterRequest>(
             API_ROUTES.AUTH.REGISTER,
-            data
+            data,
+            { _skipAuthRetry: true } as any  // Skip auto-retry for register endpoint
         );
     },
 
