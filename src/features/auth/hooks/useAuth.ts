@@ -61,9 +61,28 @@ export const useLogin = () => {
                 'success'
             );
 
-            // Redirect to dashboard or intended page
+            // TODO: Implement role-based routing
+            // Determine dashboard based on user role
+            const dashboardRoute = '/doctor/dashboard'; // Default for now
+
+            // TODO: Add role-based logic once backend roles are finalized
+            // if (data.user.role === 'doctor') {
+            //     dashboardRoute = '/doctor/dashboard';
+            // } else if (data.user.role === 'ml_engineer') {
+            //     dashboardRoute = '/ml-engineer/dashboard';
+            // } else {
+            //     // TODO: Handle other roles or unknown roles
+            //     dashboardRoute = '/doctor/dashboard'; // fallback
+            // }
+
+            // Check for redirect parameter (e.g., from middleware)
             const redirect = new URLSearchParams(window.location.search).get('redirect');
-            router.push(redirect || '/dashboard');
+
+            // TODO: Validate redirect URL to ensure it matches user's role
+            // For security, ensure users can only redirect to routes they have access to
+
+            // Redirect to intended page or role-based dashboard
+            router.push(redirect || dashboardRoute);
         },
         onError: (error: ApiError) => {
             console.error('Login failed:', error.getFullMessage());

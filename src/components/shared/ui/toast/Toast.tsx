@@ -1,6 +1,6 @@
 /**
  * Toast Component
- * Medical-themed notification system
+ * Medical-themed notification (system)
  */
 
 'use client';
