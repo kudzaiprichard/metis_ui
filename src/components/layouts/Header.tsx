@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useLogout } from '@/src/features/auth/hooks/useAuth';
-import { useToast } from '@/src/components/shared/ui/toast';
 
 interface HeaderProps {
     userName: string;
@@ -13,16 +12,17 @@ interface HeaderProps {
 export function Header({ userName, userRole, userInitials }: HeaderProps) {
     const router = useRouter();
     const logout = useLogout();
-    const { showToast } = useToast();
 
     const handleLogout = () => {
         logout.mutate(undefined, {
             onSuccess: () => {
-                showToast('Logged Out', 'You have been successfully logged out', 'success');
+                //Toasts already handled in use Toast
+                // showToast('Logged Out', 'You have been successfully logged out', 'success');
                 router.push('/login');
             },
             onError: () => {
-                showToast('Logout Failed', 'An error occurred during logout', 'error');
+                //Toasts already handled in use Toast
+                // showToast('Logout Failed', 'An error occurred during logout', 'error');
             }
         });
     };
