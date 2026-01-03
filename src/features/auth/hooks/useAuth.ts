@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../api/auth.api';
-import { LoginRequest, RegisterRequest, AuthResponse } from '../api/auth.types';
+import {LoginRequest, RegisterRequest, AuthResponse, UserRole, normalizeUserRole} from '../api/auth.types';
 import { setAuthTokens, clearAuthTokens, isAuthenticated } from '@/src/lib/utils/auth';
 import { ApiError } from '@/src/lib/types';
 import { queueToast } from '@/src/lib/utils/toast-bridge';
@@ -61,28 +61,36 @@ export const useLogin = () => {
                 'success'
             );
 
-            // TODO: Implement role-based routing
             // Determine dashboard based on user role
-            const dashboardRoute = '/doctor/dashboard'; // Default for now
+            const normalizedRole = normalizeUserRole(data.user.role);
 
-            // TODO: Add role-based logic once backend roles are finalized
-            // if (data.user.role === 'doctor') {
-            //     dashboardRoute = '/doctor/dashboard';
-            // } else if (data.user.role === 'ml_engineer') {
-            //     dashboardRoute = '/ml-engineer/dashboard';
-            // } else {
-            //     // TODO: Handle other roles or unknown roles
-            //     dashboardRoute = '/doctor/dashboard'; // fallback
-            // }
+            const dashboardRoute = normalizedRole === UserRole.ML_ENGINEER
+                ? '/ml-engineer/dashboard'
+                : '/doctor/dashboard';
 
             // Check for redirect parameter (e.g., from middleware)
-            const redirect = new URLSearchParams(window.location.search).get('redirect');
+            const redirectParam = new URLSearchParams(window.location.search).get('redirect');
 
-            // TODO: Validate redirect URL to ensure it matches user's role
-            // For security, ensure users can only redirect to routes they have access to
+            // Validate redirect URL to ensure it matches user's role
+            let validatedRedirect = dashboardRoute;
 
-            // Redirect to intended page or role-based dashboard
-            router.push(redirect || dashboardRoute);
+            if (redirectParam) {
+                // Check if redirect URL is allowed for this user's role
+                const isValidForRole =
+                    (normalizedRole === UserRole.ML_ENGINEER && redirectParam.startsWith('/ml-engineer')) ||
+                    (normalizedRole === UserRole.DOCTOR && redirectParam.startsWith('/doctor'));
+
+                // Only use redirect if it's valid for the user's role
+                if (isValidForRole) {
+                    validatedRedirect = redirectParam;
+                } else {
+                    // Log security attempt and redirect to appropriate dashboard
+                    console.warn(`Invalid redirect attempt: User with role ${normalizedRole} tried to access ${redirectParam}`);
+                }
+            }
+
+            // Redirect to validated page
+            router.push(validatedRedirect);
         },
         onError: (error: ApiError) => {
             console.error('Login failed:', error.getFullMessage());

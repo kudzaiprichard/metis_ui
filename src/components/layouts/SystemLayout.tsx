@@ -1,22 +1,61 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { normalizeUserRole, UserRole } from '@/src/features/auth/api/auth.types';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
+import { Breadcrumb } from './Breadcrumb';
+import { mlEngineerNavItems } from "@/src/components/layouts/navigation/MLEngineerNavItems";
+import { doctorNavItems } from "@/src/components/layouts/navigation/DoctorNavItems";
 
 interface SystemLayoutProps {
     children: ReactNode;
-    sidebar: ReactNode;
-    header: ReactNode;
-    breadcrumb: ReactNode;
 }
 
-export function SystemLayout({ children, sidebar, header, breadcrumb }: SystemLayoutProps) {
+export function SystemLayout({ children }: SystemLayoutProps) {
+    const { user, isLoading } = useAuth();
+
+    // Show loading state while fetching user data
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-white text-xl">Loading...</div>
+            </div>
+        );
+    }
+
+    // Safety check (middleware should prevent this)
+    if (!user) {
+        return null;
+    }
+
+    // Normalize the user role to enum
+    const normalizedRole = normalizeUserRole(user.role);
+
+    // Determine nav items based on user role
+    const navItems = normalizedRole === UserRole.ML_ENGINEER ? mlEngineerNavItems : doctorNavItems;
+
+    // Create user initials
+    const userInitials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`;
+
+    // Format user name
+    const userName = `${user.first_name} ${user.last_name}`;
+
+    // Format user role for display
+    const userRole = normalizedRole.replace('_', ' ');
+
     return (
         <>
             {/* Floating Sidebar */}
-            {sidebar}
+            <Sidebar navItems={navItems} />
 
             {/* Floating Header */}
-            {header}
+            <Header
+                userName={userName}
+                userRole={userRole}
+                userInitials={userInitials}
+            />
 
             {/* Main Content Area with Custom Scrollbar */}
             <div className="main-content">
@@ -26,7 +65,7 @@ export function SystemLayout({ children, sidebar, header, breadcrumb }: SystemLa
             </div>
 
             {/* Floating Breadcrumb */}
-            {breadcrumb}
+            <Breadcrumb />
 
             <style jsx>{`
                 .main-content {

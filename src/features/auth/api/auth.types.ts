@@ -4,6 +4,37 @@
  */
 
 // ============================================================================
+// ROLE TYPES & ENUM
+// ============================================================================
+
+/**
+ * User role enum - single source of truth for all role values
+ */
+export enum UserRole {
+    DOCTOR = 'DOCTOR',
+    ML_ENGINEER = 'ML_ENGINEER'
+}
+
+/**
+ * Helper function to normalize role strings from backend to enum
+ * Handles various formats: 'ml_engineer', 'ML_ENGINEER', 'doctor', 'DOCTOR'
+ */
+export function normalizeUserRole(role: string): UserRole {
+    const normalized = role.toUpperCase().replace('-', '_').trim();
+
+    if (normalized === 'ML_ENGINEER' || normalized === 'MLENGINEER') {
+        return UserRole.ML_ENGINEER;
+    }
+
+    if (normalized === 'DOCTOR' || normalized === 'DR') {
+        return UserRole.DOCTOR;
+    }
+
+    // Default fallback
+    return UserRole.DOCTOR;
+}
+
+// ============================================================================
 // TOKEN TYPES
 // ============================================================================
 
@@ -37,7 +68,7 @@ export interface User {
     email: string;
     first_name: string;
     last_name: string;
-    role: string;
+    role: string; // Raw role from backend
     created_at: string;
     updated_at: string;
 }
@@ -62,7 +93,7 @@ export interface RegisterRequest {
     password: string;
     first_name: string;
     last_name: string;
-    role?: 'DOCTOR' | 'ML_ENGINEER';
+    role?: UserRole;
 }
 
 /**
