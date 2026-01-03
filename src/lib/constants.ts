@@ -31,6 +31,7 @@ export const ROUTE_PERMISSIONS = {
     '/similar-patients': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
 
     // ML Team routes (ML_ENGINEER only)
+    '/users': [USER_ROLES.ML_ENGINEER],
     '/models': [USER_ROLES.ML_ENGINEER],
     '/training': [USER_ROLES.ML_ENGINEER],
     '/playground': [USER_ROLES.ML_ENGINEER],

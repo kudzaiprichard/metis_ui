@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getApiBaseUrl, API_CONFIG, COOKIE_NAMES, HTTP_STATUS, API_ROUTES } from './constants';
-import { ApiResponse, ApiError } from './types';
+import { ApiResponse, ApiError, PaginatedResponse } from './types';
 import Cookies from 'js-cookie';
 
 /**
@@ -239,6 +239,32 @@ class ApiClient {
     async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
         const response = await axiosInstance.get<ApiResponse<T>>(url, config);
         return response.data.value as T;
+    }
+
+    /**
+     * GET paginated request - Returns items with pagination metadata
+     * Use this for endpoints that return PaginatedResponse
+     */
+    async getPaginated<T>(url: string, config?: AxiosRequestConfig): Promise<{
+        items: T[];
+        pagination: {
+            page: number;
+            page_size: number;
+            total: number;
+            total_pages: number;
+        };
+    }> {
+        const response = await axiosInstance.get<PaginatedResponse<T>>(url, config);
+
+        return {
+            items: response.data.value || [],
+            pagination: response.data.pagination || {
+                page: 1,
+                page_size: 20,
+                total: 0,
+                total_pages: 0,
+            },
+        };
     }
 
     /**
