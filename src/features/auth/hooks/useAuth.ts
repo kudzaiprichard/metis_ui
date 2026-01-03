@@ -61,18 +61,18 @@ export const useLogin = () => {
                 'success'
             );
 
-            // Determine dashboard based on user role
+            // Determine landing page based on user role
             const normalizedRole = normalizeUserRole(data.user.role);
 
-            const dashboardRoute = normalizedRole === UserRole.ML_ENGINEER
-                ? '/ml-engineer/dashboard'
+            const landingRoute = normalizedRole === UserRole.ML_ENGINEER
+                ? '/ml-engineer/users'
                 : '/doctor/dashboard';
 
             // Check for redirect parameter (e.g., from middleware)
             const redirectParam = new URLSearchParams(window.location.search).get('redirect');
 
             // Validate redirect URL to ensure it matches user's role
-            let validatedRedirect = dashboardRoute;
+            let validatedRedirect = landingRoute;
 
             if (redirectParam) {
                 // Check if redirect URL is allowed for this user's role
@@ -84,7 +84,7 @@ export const useLogin = () => {
                 if (isValidForRole) {
                     validatedRedirect = redirectParam;
                 } else {
-                    // Log security attempt and redirect to appropriate dashboard
+                    // Log security attempt and redirect to appropriate landing page
                     console.warn(`Invalid redirect attempt: User with role ${normalizedRole} tried to access ${redirectParam}`);
                 }
             }
