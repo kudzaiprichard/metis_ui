@@ -55,6 +55,7 @@ export const API_ROUTES = {
     PATIENTS: {
         BASE: '/patients',
         BY_ID: (id: string) => `/patients/${id}`,
+        MEDICAL_DATA: (patientId: string) => `/patients/${patientId}/medical-data`,
     },
     PREDICTIONS: {
         BASE: '/predictions',
