@@ -52,11 +52,11 @@ export const patientsApi = {
 
     /**
      * Get patient by ID with medical data
-     * GET /patients/:id
+     * GET /patients/:id/detail
      */
     getById: (patientId: string): Promise<PatientDetail> => {
         return apiClient.get<PatientDetail>(
-            API_ROUTES.PATIENTS.BY_ID(patientId)
+            API_ROUTES.PATIENTS.BY_ID_DETAIL(patientId)
         );
     },
 
