@@ -608,13 +608,13 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     border-radius: 10px;
                     margin-bottom: 20px;
                 }
-
+            
                 .form-section {
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
                 }
-
+            
                 .form-section-title {
                     font-size: 16px;
                     font-weight: 600;
@@ -624,23 +624,23 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
                     letter-spacing: -0.3px;
                 }
-
+            
                 .form-grid {
                     display: grid;
                     grid-template-columns: repeat(2, 1fr);
                     gap: 20px;
                 }
-
+            
                 .form-group {
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
                 }
-
+            
                 .form-group.full-width {
                     grid-column: 1 / -1;
                 }
-
+            
                 .form-label {
                     font-size: 12px;
                     color: rgba(255, 255, 255, 0.6);
@@ -648,7 +648,7 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
-
+            
                 .form-input {
                     padding: 12px 14px;
                     background: rgba(255, 255, 255, 0.03);
@@ -658,29 +658,39 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     font-size: 14px;
                     outline: none;
                     transition: all 0.2s ease;
+                    font-family: inherit;
                 }
-
+            
                 .form-input::placeholder {
                     color: rgba(255, 255, 255, 0.3);
                 }
-
+            
+                .form-input:hover {
+                    border-color: rgba(255, 255, 255, 0.15);
+                }
+            
                 .form-input:focus {
                     border-color: rgba(16, 185, 129, 0.4);
                     background: rgba(255, 255, 255, 0.05);
                     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
                 }
-
+            
                 .form-input.error {
                     border-color: rgba(239, 68, 68, 0.5);
                     background: rgba(239, 68, 68, 0.05);
                 }
-
+            
+                /* Select dropdown styling */
+                select.form-input {
+                    cursor: pointer;
+                }
+            
                 .info-text {
                     font-size: 11px;
                     color: rgba(255, 255, 255, 0.4);
                     font-style: italic;
                 }
-
+            
                 .error-text {
                     font-size: 12px;
                     color: #ef4444;
@@ -689,12 +699,12 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     gap: 4px;
                     margin-top: -4px;
                 }
-
+            
                 .error-text::before {
                     content: '⚠';
                     font-size: 11px;
                 }
-
+            
                 .form-group-inline {
                     display: flex;
                     align-items: center;
@@ -703,7 +713,7 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     background: rgba(255, 255, 255, 0.02);
                     border-radius: 6px;
                 }
-
+            
                 .form-checkbox {
                     width: 18px;
                     height: 18px;
@@ -717,12 +727,16 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     position: relative;
                     flex-shrink: 0;
                 }
-
+            
+                .form-checkbox:hover {
+                    border-color: rgba(255, 255, 255, 0.3);
+                }
+            
                 .form-checkbox:checked {
                     background: #10b981;
                     border-color: #10b981;
                 }
-
+            
                 .form-checkbox:checked::after {
                     content: '✓';
                     position: absolute;
@@ -733,12 +747,12 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     font-size: 12px;
                     font-weight: bold;
                 }
-
+            
                 .form-checkbox:focus {
                     outline: none;
                     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
                 }
-
+            
                 .checkbox-label {
                     font-size: 13px;
                     color: rgba(255, 255, 255, 0.8);
@@ -746,13 +760,13 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     user-select: none;
                     font-weight: 400;
                 }
-
+            
                 .form-actions-wrapper {
                     display: flex;
                     justify-content: flex-end;
                     margin-top: 24px;
                 }
-
+            
                 .form-btn {
                     padding: 11px 24px;
                     border-radius: 8px;
@@ -765,46 +779,66 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     gap: 8px;
                     border: 1px solid;
                 }
-
+            
                 .form-btn:disabled {
                     opacity: 0.5;
                     cursor: not-allowed;
                 }
-
+            
                 .form-btn.submit {
                     background: linear-gradient(135deg, #047857, #10b981);
                     border-color: rgba(16, 185, 129, 0.3);
                     color: white;
                 }
-
+            
                 .form-btn.submit:hover:not(:disabled) {
                     background: linear-gradient(135deg, #059669, #34d399);
                     border-color: rgba(16, 185, 129, 0.4);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+                    transform: translateY(-1px);
                 }
-
+            
+                .form-btn.submit:active:not(:disabled) {
+                    transform: translateY(0);
+                }
+            
+                /* Force dark background on dropdown options */
+                select.form-input option {
+                    background-color: #0c1821 !important;
+                    color: #ffffff !important;
+                }
+            
+                /* Webkit/Chrome specific */
+                select.form-input option:checked,
+                select.form-input option:hover {
+                    background-color: #1a2b3a !important;
+                    color: #34d399 !important;
+                }
+            
                 @media (max-width: 768px) {
                     .section-card {
                         padding: 16px;
                     }
-
+            
                     .form-grid {
                         grid-template-columns: 1fr;
                         gap: 16px;
                     }
-
+            
                     .form-group.full-width {
                         grid-column: 1;
                     }
-
+            
                     .form-actions-wrapper {
                         justify-content: stretch;
                     }
-
+            
                     .form-btn {
                         width: 100%;
                         justify-content: center;
                     }
                 }
+                
             `}</style>
         </>
     );
