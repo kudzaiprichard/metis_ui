@@ -58,10 +58,32 @@ export const API_ROUTES = {
         BY_ID_DETAIL: (id: string) => `/patients/${id}/detail`, // ← Patient with medical data
         MEDICAL_DATA: (patientId: string) => `/patients/${patientId}/medical-data`,
         RESTORE: (id: string) => `/patients/${id}/restore`,
+        TIMELINE: (patientId: string) => `/patients/${patientId}/timeline`,
     },
     PREDICTIONS: {
         BASE: '/predictions',
         BY_ID: (id: string) => `/predictions/${id}`,
+    },
+    RECOMMENDATION: {
+        BASE: '/recommendation',
+        GENERATE: '/recommendation/generate',
+        BY_ID: (id: string) => `/recommendation/${id}`,
+        BY_PATIENT: (patientId: string) => `/recommendation/patient/${patientId}`,
+    },
+    TREATMENT_DECISIONS: {
+        BASE: '/treatment-decisions',
+        BY_ID: (id: string) => `/treatment-decisions/${id}`,
+        BY_PATIENT: (patientId: string) => `/treatment-decisions/patient/${patientId}`,
+        UPDATE_OUTCOME: (id: string) => `/treatment-decisions/${id}/outcome`,
+    },
+    FOLLOW_UPS: {
+        BASE: '/follow-ups',
+        SCHEDULE: '/follow-ups/schedule',
+        BY_ID: (id: string) => `/follow-ups/${id}`,
+        BY_PATIENT: (patientId: string) => `/follow-ups/patient/${patientId}`,
+        COMPLETE: (id: string) => `/follow-ups/${id}/complete`,
+        CANCEL: (id: string) => `/follow-ups/${id}/cancel`,
+        UPCOMING: '/follow-ups/upcoming',
     },
     MONITORING: {
         BASE: '/monitoring',
@@ -70,6 +92,28 @@ export const API_ROUTES = {
     MODELS: {
         BASE: '/models',
         BY_ID: (id: string) => `/models/${id}`,
+    },
+    ML_MODELS: {
+        BASE: '/ml/models',
+        BY_VERSION: (version: string) => `/ml/models/${version}`,
+        ACTIVE: '/ml/models/active',
+        ACTIVATE: (version: string) => `/ml/models/${version}/activate`,
+        STATUS: '/ml/models/status',
+        COMPARE: '/ml/models/compare',
+        LINEAGE: (version: string) => `/ml/models/${version}/lineage`,
+    },
+    BATCH_PREDICTIONS: {
+        BASE: '/ml/batch-predictions',
+        SUMMARY: '/ml/batch-predictions/summary',
+    },
+    ONLINE_LEARNING: {
+        BASE: '/ml/training/online-learning',
+        STATUS: '/ml/training/status',
+    },
+    SIMILAR_PATIENTS: {
+        SEARCH: '/similar-patients/search',
+        SEARCH_GRAPH: '/similar-patients/search/graph',
+        BY_CASE_ID: (caseId: string) => `/similar-patients/${caseId}`,
     },
 } as const;
 
