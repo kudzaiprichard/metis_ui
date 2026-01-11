@@ -68,7 +68,6 @@ export const API_ROUTES = {
         BASE: '/recommendation',
         GENERATE: '/recommendation/generate',
         BY_ID: (id: string) => `/recommendation/${id}`,
-        BY_PATIENT: (patientId: string) => `/recommendation/patient/${patientId}`,
     },
     TREATMENT_DECISIONS: {
         BASE: '/treatment-decisions',
