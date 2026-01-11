@@ -5,8 +5,10 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PatientDetail } from '../../api/patients.types';
+import {BrainPulseLoader} from "@/src/features/patients/components/loader/BrainPulseLoader";
 
 interface PatientHeaderProps {
     patient: PatientDetail;
@@ -14,6 +16,8 @@ interface PatientHeaderProps {
 
 export function PatientHeader({ patient }: PatientHeaderProps) {
     const router = useRouter();
+    const [isGeneratingPrediction, setIsGeneratingPrediction] = useState(false);
+    const [isFindingSimilar, setIsFindingSimilar] = useState(false);
 
     const getInitials = () => {
         return `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
@@ -51,12 +55,54 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
         router.push('/doctor/patients');
     };
 
-    const handleExport = () => {
-        console.log('Export patient data:', patient.id);
+    const handleFindSimilar = async () => {
+        console.log('Finding similar patients for:', patient.id);
+
+        // Show loading
+        setIsFindingSimilar(true);
+
+        try {
+            // TODO: Replace with actual API call
+            // const response = await findSimilarPatients(patient.id);
+
+            // Simulate API call for now
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Hide loading after search is complete
+            setIsFindingSimilar(false);
+
+            // TODO: Handle successful search - navigate to similar patients view
+            console.log('Similar patients found!');
+
+        } catch (error) {
+            console.error('Find similar patients failed:', error);
+            setIsFindingSimilar(false);
+        }
     };
 
-    const handlePredict = () => {
+    const handlePredict = async () => {
         console.log('Run AI prediction for patient:', patient.id);
+
+        // Show loader
+        setIsGeneratingPrediction(true);
+
+        try {
+            // TODO: Replace with actual API call
+            // const response = await generatePrediction(patient.id);
+
+            // Simulate API call for now
+            await new Promise(resolve => setTimeout(resolve, 8000));
+
+            // Hide loader after prediction is complete
+            setIsGeneratingPrediction(false);
+
+            // TODO: Handle successful prediction
+            console.log('Prediction completed!');
+
+        } catch (error) {
+            console.error('Prediction failed:', error);
+            setIsGeneratingPrediction(false);
+        }
     };
 
     // Mock data for now - replace with actual data when available
@@ -66,6 +112,9 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
 
     return (
         <>
+            {/* Brain Pulse Loader */}
+            <BrainPulseLoader isLoading={isGeneratingPrediction} />
+
             <div className="patient-header-card">
                 {/* Top Row: Basic Info + Actions */}
                 <div className="header-top-row">
@@ -84,11 +133,28 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                             <i className="fa-solid fa-arrow-left"></i>
                             <span>Back to Patients</span>
                         </button>
-                        <button className="action-btn" onClick={handleExport}>
-                            <i className="fa-solid fa-download"></i>
-                            <span>Export</span>
+                        <button
+                            className="action-btn similar-btn"
+                            onClick={handleFindSimilar}
+                            disabled={isFindingSimilar}
+                        >
+                            {isFindingSimilar ? (
+                                <>
+                                    <i className="fa-solid fa-spinner fa-spin"></i>
+                                    <span>Searching...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fa-solid fa-users"></i>
+                                    <span>Find Similar</span>
+                                </>
+                            )}
                         </button>
-                        <button className="action-btn primary" onClick={handlePredict}>
+                        <button
+                            className="action-btn primary"
+                            onClick={handlePredict}
+                            disabled={isGeneratingPrediction}
+                        >
                             <i className="fa-solid fa-brain"></i>
                             <span>AI Predict</span>
                         </button>
@@ -249,10 +315,15 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                     white-space: nowrap;
                 }
 
-                .action-btn:hover {
+                .action-btn:hover:not(:disabled) {
                     background: rgba(255, 255, 255, 0.1);
                     border-color: rgba(255, 255, 255, 0.18);
                     color: #ffffff;
+                }
+
+                .action-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
                 }
 
                 .action-btn.back-btn {
@@ -267,13 +338,30 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                     color: rgba(255, 255, 255, 0.9);
                 }
 
+                .action-btn.similar-btn {
+                    background: rgba(139, 92, 246, 0.12);
+                    border-color: rgba(139, 92, 246, 0.2);
+                    color: #a78bfa;
+                }
+
+                .action-btn.similar-btn:hover:not(:disabled) {
+                    background: rgba(139, 92, 246, 0.18);
+                    border-color: rgba(139, 92, 246, 0.3);
+                    color: #c4b5fd;
+                }
+
+                .action-btn.similar-btn:disabled {
+                    opacity: 1;
+                    background: rgba(139, 92, 246, 0.15);
+                }
+
                 .action-btn.primary {
                     background: linear-gradient(135deg, #047857, #10b981);
                     border-color: rgba(16, 185, 129, 0.3);
                     color: #ffffff;
                 }
 
-                .action-btn.primary:hover {
+                .action-btn.primary:hover:not(:disabled) {
                     background: linear-gradient(135deg, #059669, #34d399);
                 }
 
