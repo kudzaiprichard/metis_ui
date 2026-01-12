@@ -1,3 +1,5 @@
+// src/features/patients/components/detail/PatientHeader.tsx
+
 /**
  * PatientHeader Component
  * Displays patient information header with avatar and quick stats
@@ -8,7 +10,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PatientDetail } from '../../api/patients.types';
-import {BrainPulseLoader} from "@/src/features/patients/components/loader/BrainPulseLoader";
+import { BrainPulseLoader } from "@/src/features/patients/components/loader/BrainPulseLoader";
+import { useToast } from '@/src/components/shared/ui/toast';
+import { ApiError } from '@/src/lib/types';
+import {useGenerateRecommendation} from "@/src/features/recommendation/hooks/useRecommendations";
 
 interface PatientHeaderProps {
     patient: PatientDetail;
@@ -16,8 +21,9 @@ interface PatientHeaderProps {
 
 export function PatientHeader({ patient }: PatientHeaderProps) {
     const router = useRouter();
-    const [isGeneratingPrediction, setIsGeneratingPrediction] = useState(false);
     const [isFindingSimilar, setIsFindingSimilar] = useState(false);
+    const { showToast } = useToast();
+    const generateRecommendation = useGenerateRecommendation();
 
     const getInitials = () => {
         return `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
@@ -83,26 +89,39 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
     const handlePredict = async () => {
         console.log('Run AI prediction for patient:', patient.id);
 
-        // Show loader
-        setIsGeneratingPrediction(true);
-
-        try {
-            // TODO: Replace with actual API call
-            // const response = await generatePrediction(patient.id);
-
-            // Simulate API call for now
-            await new Promise(resolve => setTimeout(resolve, 8000));
-
-            // Hide loader after prediction is complete
-            setIsGeneratingPrediction(false);
-
-            // TODO: Handle successful prediction
-            console.log('Prediction completed!');
-
-        } catch (error) {
-            console.error('Prediction failed:', error);
-            setIsGeneratingPrediction(false);
+        // Check if patient has medical data
+        if (!patient.medical_data) {
+            showToast(
+                'Medical Data Required',
+                'Please add medical data for this patient before generating predictions',
+                'error'
+            );
+            return;
         }
+
+        // Generate prediction
+        generateRecommendation.mutate(
+            { patient_id: patient.id },
+            {
+                onSuccess: (prediction) => {
+                    showToast(
+                        'Prediction Generated',
+                        `Successfully generated treatment recommendation for ${patient.first_name} ${patient.last_name}`,
+                        'success'
+                    );
+
+                    // Navigate to the prediction detail page
+                    router.push(`/doctor/recommendations/${prediction.id}`);
+                },
+                onError: (error: ApiError) => {
+                    showToast(
+                        'Prediction Failed',
+                        error.getMessage() || 'Failed to generate prediction. Please try again.',
+                        'error'
+                    );
+                },
+            }
+        );
     };
 
     // Mock data for now - replace with actual data when available
@@ -113,7 +132,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
     return (
         <>
             {/* Brain Pulse Loader */}
-            <BrainPulseLoader isLoading={isGeneratingPrediction} />
+            <BrainPulseLoader isLoading={generateRecommendation.isPending} />
 
             <div className="patient-header-card">
                 {/* Top Row: Basic Info + Actions */}
@@ -153,10 +172,19 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                         <button
                             className="action-btn primary"
                             onClick={handlePredict}
-                            disabled={isGeneratingPrediction}
+                            disabled={generateRecommendation.isPending || !patient.medical_data}
                         >
-                            <i className="fa-solid fa-brain"></i>
-                            <span>AI Predict</span>
+                            {generateRecommendation.isPending ? (
+                                <>
+                                    <i className="fa-solid fa-spinner fa-spin"></i>
+                                    <span>Generating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fa-solid fa-brain"></i>
+                                    <span>AI Predict</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -363,6 +391,11 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
 
                 .action-btn.primary:hover:not(:disabled) {
                     background: linear-gradient(135deg, #059669, #34d399);
+                }
+
+                .action-btn.primary:disabled {
+                    opacity: 0.5;
+                    background: linear-gradient(135deg, #047857, #10b981);
                 }
 
                 .stats-grid {
