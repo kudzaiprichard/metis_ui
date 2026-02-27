@@ -13,7 +13,7 @@ import { PatientDetail } from '../../api/patients.types';
 import { BrainPulseLoader } from "@/src/features/patients/components/loader/BrainPulseLoader";
 import { useToast } from '@/src/components/shared/ui/toast';
 import { ApiError } from '@/src/lib/types';
-import {useGenerateRecommendation} from "@/src/features/recommendation/hooks/useRecommendations";
+import { useGenerateRecommendation } from "@/src/features/recommendation/hooks/useRecommendations";
 
 interface PatientHeaderProps {
     patient: PatientDetail;
@@ -61,29 +61,19 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
         router.push('/doctor/patients');
     };
 
-    const handleFindSimilar = async () => {
-        console.log('Finding similar patients for:', patient.id);
-
-        // Show loading
-        setIsFindingSimilar(true);
-
-        try {
-            // TODO: Replace with actual API call
-            // const response = await findSimilarPatients(patient.id);
-
-            // Simulate API call for now
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            // Hide loading after search is complete
-            setIsFindingSimilar(false);
-
-            // TODO: Handle successful search - navigate to similar patients view
-            console.log('Similar patients found!');
-
-        } catch (error) {
-            console.error('Find similar patients failed:', error);
-            setIsFindingSimilar(false);
+    const handleFindSimilar = () => {
+        // Check if patient has medical data
+        if (!patient.medical_data) {
+            showToast(
+                'Medical Data Required',
+                'Please add medical data for this patient before finding similar cases',
+                'error'
+            );
+            return;
         }
+
+        // Navigate to similar patients page with patient ID as default
+        router.push(`/doctor/similar-patients?patientId=${patient.id}`);
     };
 
     const handlePredict = async () => {
@@ -155,19 +145,10 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                         <button
                             className="action-btn similar-btn"
                             onClick={handleFindSimilar}
-                            disabled={isFindingSimilar}
+                            disabled={!patient.medical_data}
                         >
-                            {isFindingSimilar ? (
-                                <>
-                                    <i className="fa-solid fa-spinner fa-spin"></i>
-                                    <span>Searching...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <i className="fa-solid fa-users"></i>
-                                    <span>Find Similar</span>
-                                </>
-                            )}
+                            <i className="fa-solid fa-users"></i>
+                            <span>Find Similar</span>
                         </button>
                         <button
                             className="action-btn primary"
@@ -376,11 +357,6 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                     background: rgba(139, 92, 246, 0.18);
                     border-color: rgba(139, 92, 246, 0.3);
                     color: #c4b5fd;
-                }
-
-                .action-btn.similar-btn:disabled {
-                    opacity: 1;
-                    background: rgba(139, 92, 246, 0.15);
                 }
 
                 .action-btn.primary {
