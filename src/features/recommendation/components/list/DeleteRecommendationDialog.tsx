@@ -8,6 +8,7 @@
 'use client';
 
 import { Prediction } from '../../api/recommendations.types';
+import { useDeleteRecommendation } from '../../hooks/useRecommendations';
 import { useToast } from '@/src/components/shared/ui/toast';
 import { ApiError } from '@/src/lib/types';
 
@@ -18,27 +19,13 @@ interface DeleteRecommendationDialogProps {
 }
 
 export function DeleteRecommendationDialog({ isOpen, onClose, prediction }: DeleteRecommendationDialogProps) {
-    // TODO: Add delete mutation hook when API endpoint is available
-    // const deletePrediction = useDeleteRecommendation();
+    const deleteRecommendation = useDeleteRecommendation();
     const { showToast } = useToast();
 
     if (!isOpen || !prediction) return null;
 
     const handleConfirm = () => {
-        // TODO: Implement deletion when API endpoint is available
-        console.log('Delete prediction:', prediction.id);
-
-        // Placeholder success message
-        showToast(
-            'Prediction Deleted',
-            `Prediction for ${prediction.patient.first_name} ${prediction.patient.last_name} has been deleted`,
-            'success'
-        );
-        onClose();
-
-        /*
-        // Future implementation:
-        deletePrediction.mutate(prediction.id, {
+        deleteRecommendation.mutate(prediction.id, {
             onSuccess: () => {
                 showToast(
                     'Prediction Deleted',
@@ -55,7 +42,6 @@ export function DeleteRecommendationDialog({ isOpen, onClose, prediction }: Dele
                 );
             },
         });
-        */
     };
 
     const formatDate = (dateString: string) => {
@@ -117,15 +103,26 @@ export function DeleteRecommendationDialog({ isOpen, onClose, prediction }: Dele
                         <button
                             className="dialog-btn cancel"
                             onClick={onClose}
+                            disabled={deleteRecommendation.isPending}
                         >
                             Cancel
                         </button>
                         <button
                             className="dialog-btn confirm delete"
                             onClick={handleConfirm}
+                            disabled={deleteRecommendation.isPending}
                         >
-                            <i className="fa-solid fa-trash"></i>
-                            Delete Prediction
+                            {deleteRecommendation.isPending ? (
+                                <>
+                                    <i className="fa-solid fa-spinner fa-spin"></i>
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fa-solid fa-trash"></i>
+                                    Delete Prediction
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -157,8 +154,8 @@ export function DeleteRecommendationDialog({ isOpen, onClose, prediction }: Dele
                     border-radius: 16px;
                     border: 1px solid rgba(52, 211, 153, 0.2);
                     box-shadow:
-                        0 24px 48px rgba(0, 0, 0, 0.5),
-                        0 0 0 1px rgba(52, 211, 153, 0.1) inset;
+                            0 24px 48px rgba(0, 0, 0, 0.5),
+                            0 0 0 1px rgba(52, 211, 153, 0.1) inset;
                     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 }
 

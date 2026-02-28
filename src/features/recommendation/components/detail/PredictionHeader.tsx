@@ -17,6 +17,8 @@ interface PredictionHeaderProps {
 export function PredictionHeader({ prediction }: PredictionHeaderProps) {
     const router = useRouter();
 
+    const patientId = prediction.patient.id;
+
     const getInitials = () => {
         const { first_name, last_name } = prediction.patient;
         return `${first_name.charAt(0)}${last_name.charAt(0)}`.toUpperCase();
@@ -37,7 +39,7 @@ export function PredictionHeader({ prediction }: PredictionHeaderProps) {
     };
 
     const handleViewPatient = () => {
-        router.push(`/doctor/patients/${prediction.patient_id}`);
+        router.push(`/doctor/patients/${patientId}`);
     };
 
     return (
@@ -60,7 +62,7 @@ export function PredictionHeader({ prediction }: PredictionHeaderProps) {
                             <p className="patient-meta">
                                 {prediction.patient.age} years • {prediction.patient.gender}
                             </p>
-                            <p className="patient-id">Patient ID: {prediction.patient_id.slice(0, 16)}...</p>
+                            <p className="patient-id">Patient ID: {patientId.slice(0, 16)}...</p>
                         </div>
                     </div>
 
