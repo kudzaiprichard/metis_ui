@@ -23,7 +23,7 @@ export interface PatientSummary {
 export interface PredictionQValue {
     id: string;
     treatment: string;
-    q_value: string; // Decimal as string
+    q_value: string;
     rank: number;
 }
 
@@ -33,9 +33,9 @@ export interface PredictionQValue {
 export interface ExplanationFeature {
     id: string;
     feature_name: string;
-    scaled_value: string; // Decimal as string
-    raw_value: string; // Decimal as string
-    shap_value: string; // Decimal as string
+    scaled_value: string;
+    raw_value: string;
+    shap_value: string;
     rank: number;
     interpretation: string;
     reference_range: string | null;
@@ -48,7 +48,7 @@ export interface ExplanationAlternative {
     id: string;
     rank: number;
     treatment: string;
-    predicted_reduction: string; // Decimal as string
+    predicted_reduction: string;
     pros: string;
     cons: string;
     when_to_consider: string;
@@ -76,8 +76,8 @@ export interface PredictionExplanation {
     clinical_priority: string;
     why_this_treatment: string;
     why_not_alternatives: string;
-    base_value: string; // Decimal as string
-    prediction_value: string; // Decimal as string
+    base_value: string;
+    prediction_value: string;
     feature_interactions: string | null;
     features: ExplanationFeature[];
     alternatives: ExplanationAlternative[];
@@ -89,14 +89,14 @@ export interface PredictionExplanation {
  */
 export interface Prediction {
     id: string;
-    patient_id: string;
+    medical_data_id: string;
     patient: PatientSummary;
     model_version: string;
     recommended_treatment: string;
     treatment_index: number;
-    predicted_reduction: string; // Decimal as string
-    confidence_score: string; // Decimal as string
-    confidence_margin: string; // Decimal as string
+    predicted_reduction: string;
+    confidence_score: string;
+    confidence_margin: string;
     created_at: string;
 }
 
@@ -105,14 +105,14 @@ export interface Prediction {
  */
 export interface PredictionDetail {
     id: string;
-    patient_id: string;
+    medical_data_id: string;
     patient: PatientSummary;
     model_version: string;
     recommended_treatment: string;
     treatment_index: number;
-    predicted_reduction: string; // Decimal as string
-    confidence_score: string; // Decimal as string
-    confidence_margin: string; // Decimal as string
+    predicted_reduction: string;
+    confidence_score: string;
+    confidence_margin: string;
     q_values: PredictionQValue[];
     explanation: PredictionExplanation | null;
     safety_warnings: SafetyWarning[];
@@ -127,30 +127,15 @@ export interface PredictionDetail {
  * Request to generate a new prediction
  */
 export interface GeneratePredictionRequest {
-    patient_id: string;
-}
-
-/**
- * Request to get a single prediction by ID
- */
-export interface GetPredictionRequest {
-    prediction_id: string;
-}
-
-/**
- * Request to get all predictions for a patient
- */
-export interface GetPatientPredictionsRequest {
-    patient_id: string;
-    limit?: number; // 1-100
+    medical_data_id: string;
 }
 
 /**
  * Parameters for listing predictions with pagination
  */
 export interface ListPredictionsParams {
-    page?: number; // >= 1
-    per_page?: number; // 1-100, default 20
+    page?: number;
+    per_page?: number;
     patient_id?: string;
 }
 
@@ -169,4 +154,12 @@ export interface PredictionsListResponse {
         total: number;
         total_pages: number;
     };
+}
+
+/**
+ * Confirmation of prediction deletion
+ */
+export interface DeletePredictionResponse {
+    deleted: boolean;
+    prediction_id: string;
 }

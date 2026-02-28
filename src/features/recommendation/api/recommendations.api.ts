@@ -11,6 +11,7 @@ import {
     Prediction,
     PredictionDetail,
     PredictionsListResponse,
+    DeletePredictionResponse,
 } from './recommendations.types';
 
 /**
@@ -18,7 +19,7 @@ import {
  */
 export const recommendationsApi = {
     /**
-     * Generate a new prediction for a patient
+     * Generate a new prediction for a medical data snapshot
      * POST /recommendation/generate
      */
     generate: (data: GeneratePredictionRequest): Promise<PredictionDetail> => {
@@ -39,33 +40,7 @@ export const recommendationsApi = {
     },
 
     /**
-     * Get predictions for a specific patient with pagination
-     * GET /recommendation?patient_id=:patientId&page=:page&per_page=:perPage
-     */
-    getByPatient: async (
-        patientId: string,
-        page: number = 1,
-        perPage: number = 20
-    ): Promise<PredictionsListResponse> => {
-        const params: ListPredictionsParams = {
-            patient_id: patientId,
-            page,
-            per_page: perPage,
-        };
-
-        const { items, pagination } = await apiClient.getPaginated<Prediction>(
-            API_ROUTES.RECOMMENDATION.BASE,
-            { params }
-        );
-
-        return {
-            predictions: items,
-            pagination,
-        };
-    },
-
-    /**
-     * List all predictions with pagination and optional filters
+     * List all predictions with pagination and optional patient filter
      * GET /recommendation?page=:page&per_page=:perPage&patient_id=:patientId
      */
     list: async (params?: ListPredictionsParams): Promise<PredictionsListResponse> => {
@@ -81,11 +56,11 @@ export const recommendationsApi = {
     },
 
     /**
-     * Delete a prediction
+     * Delete a prediction (soft delete)
      * DELETE /recommendation/:id
      */
-    delete: (predictionId: string): Promise<{ deleted: boolean; prediction_id: string }> => {
-        return apiClient.delete<{ deleted: boolean; prediction_id: string }>(
+    delete: (predictionId: string): Promise<DeletePredictionResponse> => {
+        return apiClient.delete<DeletePredictionResponse>(
             API_ROUTES.RECOMMENDATION.BY_ID(predictionId)
         );
     },

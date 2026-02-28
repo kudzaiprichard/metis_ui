@@ -9,28 +9,32 @@ import {
     GeneratePredictionRequest,
     ListPredictionsParams,
 } from '../api/recommendations.types';
+import { patientsKeys } from '../../patients/hooks/usePatients';
 import { ApiError } from '@/src/lib/types';
 
 /**
  * Query keys for recommendations
  */
-const recommendationsKeys = {
+export const recommendationsKeys = {
     all: ['recommendations'] as const,
     lists: () => [...recommendationsKeys.all, 'list'] as const,
     list: (params?: ListPredictionsParams) => [...recommendationsKeys.lists(), params] as const,
     details: () => [...recommendationsKeys.all, 'detail'] as const,
     detail: (id: string) => [...recommendationsKeys.details(), id] as const,
-    byPatient: (patientId: string) => [...recommendationsKeys.all, 'patient', patientId] as const,
 };
 
+// =========================================================================
+// QUERIES
+// =========================================================================
+
 /**
- * Hook to list predictions with pagination and filters
+ * Hook to list predictions with pagination and optional patient filter
  */
 export const useRecommendations = (params?: ListPredictionsParams) => {
     return useQuery({
         queryKey: recommendationsKeys.list(params),
         queryFn: () => recommendationsApi.list(params),
-        staleTime: 3 * 60 * 1000, // 3 minutes
+        staleTime: 3 * 60 * 1000,
     });
 };
 
@@ -41,25 +45,39 @@ export const useRecommendation = (predictionId: string) => {
     return useQuery({
         queryKey: recommendationsKeys.detail(predictionId),
         queryFn: () => recommendationsApi.getById(predictionId),
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        enabled: !!predictionId, // Only fetch if predictionId exists
+        staleTime: 5 * 60 * 1000,
+        enabled: !!predictionId,
     });
 };
 
 /**
- * Hook to get all predictions for a patient
+ * Hook to get predictions for a specific patient (uses list with patient_id filter)
  */
-export const usePatientRecommendations = (patientId: string, limit?: number) => {
+export const usePatientRecommendations = (
+    patientId: string,
+    page: number = 1,
+    perPage: number = 20
+) => {
+    const params: ListPredictionsParams = {
+        patient_id: patientId,
+        page,
+        per_page: perPage,
+    };
+
     return useQuery({
-        queryKey: recommendationsKeys.byPatient(patientId),
-        queryFn: () => recommendationsApi.getByPatient(patientId, limit),
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        queryKey: recommendationsKeys.list(params),
+        queryFn: () => recommendationsApi.list(params),
+        staleTime: 5 * 60 * 1000,
         enabled: !!patientId,
     });
 };
 
+// =========================================================================
+// MUTATIONS
+// =========================================================================
+
 /**
- * Hook to generate a new prediction for a patient
+ * Hook to generate a new prediction for a medical data snapshot
  */
 export const useGenerateRecommendation = () => {
     const queryClient = useQueryClient();
@@ -67,17 +85,34 @@ export const useGenerateRecommendation = () => {
     return useMutation({
         mutationFn: (data: GeneratePredictionRequest) => recommendationsApi.generate(data),
         onSuccess: (prediction) => {
-            // Invalidate predictions list to refetch with new prediction
             queryClient.invalidateQueries({ queryKey: recommendationsKeys.lists() });
-
-            // Invalidate patient predictions cache
-            queryClient.invalidateQueries({ queryKey: recommendationsKeys.byPatient(prediction.patient_id) });
-
-            // Set the new prediction in cache
             queryClient.setQueryData(recommendationsKeys.detail(prediction.id), prediction);
+
+            // Invalidate patient detail since medical records include predictions
+            const patientId = prediction.patient.id;
+            queryClient.invalidateQueries({ queryKey: patientsKeys.detail(patientId) });
+            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalRecords(patientId) });
+            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalDataLatest(patientId) });
         },
         onError: (error: ApiError) => {
             console.error('Generate prediction failed:', error.getFullMessage());
+        },
+    });
+};
+
+/**
+ * Hook to delete a prediction (soft delete)
+ */
+export const useDeleteRecommendation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (predictionId: string) => recommendationsApi.delete(predictionId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: recommendationsKeys.lists() });
+        },
+        onError: (error: ApiError) => {
+            console.error('Delete prediction failed:', error.getFullMessage());
         },
     });
 };
