@@ -23,6 +23,10 @@ import {
  * Patients API object with all patient management methods
  */
 export const patientsApi = {
+    // =========================================================================
+    // PATIENT CRUD
+    // =========================================================================
+
     /**
      * Create a new patient
      * POST /patients
@@ -35,7 +39,7 @@ export const patientsApi = {
     },
 
     /**
-     * List patients with pagination and filters
+     * List patients with pagination and search
      * GET /patients
      */
     list: async (params?: ListPatientsParams): Promise<PatientsListResponse> => {
@@ -51,10 +55,20 @@ export const patientsApi = {
     },
 
     /**
-     * Get patient by ID with medical data
+     * Get patient basic info
+     * GET /patients/:id
+     */
+    getById: (patientId: string): Promise<Patient> => {
+        return apiClient.get<Patient>(
+            API_ROUTES.PATIENTS.BY_ID(patientId)
+        );
+    },
+
+    /**
+     * Get patient with all medical records and their predictions
      * GET /patients/:id/detail
      */
-    getById: (patientId: string): Promise<PatientDetail> => {
+    getDetail: (patientId: string): Promise<PatientDetail> => {
         return apiClient.get<PatientDetail>(
             API_ROUTES.PATIENTS.BY_ID_DETAIL(patientId)
         );
@@ -82,6 +96,20 @@ export const patientsApi = {
     },
 
     /**
+     * Restore a soft-deleted patient
+     * POST /patients/:id/restore
+     */
+    restore: (patientId: string): Promise<Patient> => {
+        return apiClient.post<Patient>(
+            API_ROUTES.PATIENTS.RESTORE(patientId)
+        );
+    },
+
+    // =========================================================================
+    // MEDICAL DATA
+    // =========================================================================
+
+    /**
      * Create medical data for a patient
      * POST /patients/:patientId/medical-data
      */
@@ -93,36 +121,56 @@ export const patientsApi = {
     },
 
     /**
-     * Get medical data for a patient
+     * Get all medical records for a patient
      * GET /patients/:patientId/medical-data
      */
-    getMedicalData: (patientId: string): Promise<PatientMedicalData> => {
-        return apiClient.get<PatientMedicalData>(
+    getMedicalRecords: (patientId: string): Promise<PatientMedicalData[]> => {
+        return apiClient.get<PatientMedicalData[]>(
             API_ROUTES.PATIENTS.MEDICAL_DATA(patientId)
         );
     },
 
     /**
-     * Update medical data for a patient
-     * PUT /patients/:patientId/medical-data
+     * Get the latest medical data record for a patient
+     * GET /patients/:patientId/medical-data/latest
+     */
+    getLatestMedicalData: (patientId: string): Promise<PatientMedicalData> => {
+        return apiClient.get<PatientMedicalData>(
+            API_ROUTES.PATIENTS.MEDICAL_DATA_LATEST(patientId)
+        );
+    },
+
+    /**
+     * Get a specific medical data record by ID
+     * GET /patients/medical-data/:medicalDataId
+     */
+    getMedicalDataById: (medicalDataId: string): Promise<PatientMedicalData> => {
+        return apiClient.get<PatientMedicalData>(
+            API_ROUTES.PATIENTS.MEDICAL_DATA_BY_ID(medicalDataId)
+        );
+    },
+
+    /**
+     * Update a specific medical data record
+     * PUT /patients/medical-data/:medicalDataId
      */
     updateMedicalData: (
-        patientId: string,
+        medicalDataId: string,
         data: UpdatePatientMedicalDataRequest
     ): Promise<PatientMedicalData> => {
         return apiClient.put<PatientMedicalData, UpdatePatientMedicalDataRequest>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA(patientId),
+            API_ROUTES.PATIENTS.MEDICAL_DATA_BY_ID(medicalDataId),
             data
         );
     },
 
     /**
-     * Delete medical data for a patient
-     * DELETE /patients/:patientId/medical-data
+     * Delete a specific medical data record (soft delete)
+     * DELETE /patients/medical-data/:medicalDataId
      */
-    deleteMedicalData: (patientId: string): Promise<DeleteMedicalDataResponse> => {
+    deleteMedicalData: (medicalDataId: string): Promise<DeleteMedicalDataResponse> => {
         return apiClient.delete<DeleteMedicalDataResponse>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA(patientId)
+            API_ROUTES.PATIENTS.MEDICAL_DATA_BY_ID(medicalDataId)
         );
     },
 };
