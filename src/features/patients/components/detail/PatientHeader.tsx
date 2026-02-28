@@ -21,9 +21,15 @@ interface PatientHeaderProps {
 
 export function PatientHeader({ patient }: PatientHeaderProps) {
     const router = useRouter();
-    const [isFindingSimilar, setIsFindingSimilar] = useState(false);
     const { showToast } = useToast();
     const generateRecommendation = useGenerateRecommendation();
+
+    // Get the latest medical record (first in the array, sorted most recent first)
+    const latestMedicalRecord = patient.medical_records.length > 0
+        ? patient.medical_records[0]
+        : null;
+
+    const hasMedicalData = !!latestMedicalRecord;
 
     const getInitials = () => {
         return `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
@@ -38,23 +44,23 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
     };
 
     const getAge = () => {
-        if (!patient.medical_data?.age) return 'N/A';
-        return patient.medical_data.age;
+        if (!latestMedicalRecord?.age) return 'N/A';
+        return latestMedicalRecord.age;
     };
 
     const getGender = () => {
-        if (!patient.medical_data?.gender) return 'N/A';
-        return patient.medical_data.gender;
+        if (!latestMedicalRecord?.gender) return 'N/A';
+        return latestMedicalRecord.gender;
     };
 
     const getHbA1c = () => {
-        if (!patient.medical_data?.hba1c_baseline) return 'N/A';
-        return patient.medical_data.hba1c_baseline;
+        if (!latestMedicalRecord?.hba1c_baseline) return 'N/A';
+        return latestMedicalRecord.hba1c_baseline;
     };
 
     const getBMI = () => {
-        if (!patient.medical_data?.bmi) return 'N/A';
-        return patient.medical_data.bmi;
+        if (!latestMedicalRecord?.bmi) return 'N/A';
+        return latestMedicalRecord.bmi;
     };
 
     const handleBack = () => {
@@ -62,8 +68,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
     };
 
     const handleFindSimilar = () => {
-        // Check if patient has medical data
-        if (!patient.medical_data) {
+        if (!hasMedicalData) {
             showToast(
                 'Medical Data Required',
                 'Please add medical data for this patient before finding similar cases',
@@ -72,15 +77,11 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
             return;
         }
 
-        // Navigate to similar patients page with patient ID as default
         router.push(`/doctor/similar-patients?patientId=${patient.id}`);
     };
 
     const handlePredict = async () => {
-        console.log('Run AI prediction for patient:', patient.id);
-
-        // Check if patient has medical data
-        if (!patient.medical_data) {
+        if (!latestMedicalRecord) {
             showToast(
                 'Medical Data Required',
                 'Please add medical data for this patient before generating predictions',
@@ -89,9 +90,8 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
             return;
         }
 
-        // Generate prediction
         generateRecommendation.mutate(
-            { patient_id: patient.id },
+            { medical_data_id: latestMedicalRecord.id },
             {
                 onSuccess: (prediction) => {
                     showToast(
@@ -100,7 +100,6 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                         'success'
                     );
 
-                    // Navigate to the prediction detail page
                     router.push(`/doctor/recommendations/${prediction.id}`);
                 },
                 onError: (error: ApiError) => {
@@ -121,11 +120,9 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
 
     return (
         <>
-            {/* Brain Pulse Loader */}
             <BrainPulseLoader isLoading={generateRecommendation.isPending} />
 
             <div className="patient-header-card">
-                {/* Top Row: Basic Info + Actions */}
                 <div className="header-top-row">
                     <div className="patient-basic-info">
                         <div className="patient-avatar">{getInitials()}</div>
@@ -145,7 +142,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                         <button
                             className="action-btn similar-btn"
                             onClick={handleFindSimilar}
-                            disabled={!patient.medical_data}
+                            disabled={!hasMedicalData}
                         >
                             <i className="fa-solid fa-users"></i>
                             <span>Find Similar</span>
@@ -153,7 +150,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                         <button
                             className="action-btn primary"
                             onClick={handlePredict}
-                            disabled={generateRecommendation.isPending || !patient.medical_data}
+                            disabled={generateRecommendation.isPending || !hasMedicalData}
                         >
                             {generateRecommendation.isPending ? (
                                 <>
@@ -170,9 +167,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                     </div>
                 </div>
 
-                {/* Bottom Row: Stats Grid */}
                 <div className="stats-grid">
-                    {/* Medical Stats */}
                     <div className="stat-group">
                         <div className="stat-item">
                             <i className="fa-solid fa-user stat-icon"></i>
@@ -207,7 +202,6 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
                         </div>
                     </div>
 
-                    {/* Activity Stats */}
                     <div className="stat-group">
                         <div className="stat-item">
                             <i className="fa-solid fa-calendar-check stat-icon"></i>

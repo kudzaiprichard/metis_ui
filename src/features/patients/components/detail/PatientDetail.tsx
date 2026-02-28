@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { usePatient } from '../../hooks/usePatients';
+import { usePatientDetail } from '../../hooks/usePatients';
 import { PatientHeader } from './PatientHeader';
 import { ContactInfoTab } from './tabs/ContactInfoTab';
 import { MedicalDataTab } from './tabs/MedicalDataTab';
@@ -20,7 +20,7 @@ export type TabType = 'contact' | 'medical' | 'timeline';
 
 export function PatientDetail({ patientId }: PatientDetailProps) {
     const [activeTab, setActiveTab] = useState<TabType>('contact');
-    const { data: patient, isLoading, error } = usePatient(patientId);
+    const { data: patient, isLoading, error } = usePatientDetail(patientId);
 
     const tabs: { id: TabType; label: string; icon: string }[] = [
         { id: 'contact', label: 'Contact Information', icon: 'fa-user' },
@@ -53,10 +53,8 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
     return (
         <>
             <div className="patient-detail-container">
-                {/* Patient Header */}
                 <PatientHeader patient={patient} />
 
-                {/* Tab Navigation */}
                 <div className="tab-navigation">
                     {tabs.map((tab) => (
                         <button
@@ -70,7 +68,6 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
                     ))}
                 </div>
 
-                {/* Tab Content */}
                 <div className="tab-content-container">
                     {activeTab === 'contact' && <ContactInfoTab patient={patient} />}
                     {activeTab === 'medical' && <MedicalDataTab patient={patient} />}

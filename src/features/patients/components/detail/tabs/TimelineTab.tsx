@@ -20,14 +20,14 @@ export function TimelineTab({ patientId }: TimelineTabProps) {
     const [perPage, setPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const { data: predictions, isLoading: isPredictionsLoading } = usePatientRecommendations(patientId);
+    const { data: predictionsData, isLoading: isPredictionsLoading } = usePatientRecommendations(patientId);
     const { data: timelineData, isLoading: isTimelineLoading, error: timelineError } = usePatientTimeline(patientId);
 
     const handleViewPredictions = () => {
         router.push(`/doctor/recommendations/patient/${patientId}`);
     };
 
-    const predictionsCount = Array.isArray(predictions) ? predictions.length : 0;
+    const predictionsCount = predictionsData?.predictions?.length ?? 0;
 
     // Pagination
     const paginatedTimeline = timelineData?.timeline.slice(
@@ -101,7 +101,6 @@ export function TimelineTab({ patientId }: TimelineTabProps) {
             return <span className="data-pill">Date: {data.scheduled_date}</span>;
         }
 
-        // Show first 3 data fields for other events
         const entries = Object.entries(data).slice(0, 3);
         return entries.map(([key, value]) => (
             <span key={key} className="data-pill">

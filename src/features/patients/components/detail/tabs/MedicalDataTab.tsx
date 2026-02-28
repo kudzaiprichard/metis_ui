@@ -22,40 +22,45 @@ type GenderType = 'Male' | 'Female';
 type EthnicityType = 'Caucasian' | 'African' | 'Asian' | 'Hispanic' | 'Other';
 
 export function MedicalDataTab({ patient }: MedicalDataTabProps) {
-    const hasMedicalData = !!patient.medical_data;
+    // Get the latest medical record (first in the array, sorted most recent first)
+    const latestMedicalRecord = patient.medical_records.length > 0
+        ? patient.medical_records[0]
+        : null;
+
+    const hasMedicalData = !!latestMedicalRecord;
     const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
     const getInitialFormData = () => ({
         // Demographics
-        age: patient.medical_data?.age || 0,
-        gender: (patient.medical_data?.gender || 'Male') as GenderType,
-        ethnicity: (patient.medical_data?.ethnicity || 'Caucasian') as EthnicityType,
+        age: latestMedicalRecord?.age || 0,
+        gender: (latestMedicalRecord?.gender || 'Male') as GenderType,
+        ethnicity: (latestMedicalRecord?.ethnicity || 'Caucasian') as EthnicityType,
 
         // Diabetes Profile
-        hba1c_baseline: patient.medical_data?.hba1c_baseline || '',
-        diabetes_duration: patient.medical_data?.diabetes_duration || '',
-        fasting_glucose: patient.medical_data?.fasting_glucose || '',
-        c_peptide: patient.medical_data?.c_peptide || '',
+        hba1c_baseline: latestMedicalRecord?.hba1c_baseline || '',
+        diabetes_duration: latestMedicalRecord?.diabetes_duration || '',
+        fasting_glucose: latestMedicalRecord?.fasting_glucose || '',
+        c_peptide: latestMedicalRecord?.c_peptide || '',
 
         // Metabolic & Cardiovascular
-        egfr: patient.medical_data?.egfr || '',
-        bmi: patient.medical_data?.bmi || '',
-        bp_systolic: patient.medical_data?.bp_systolic || 0,
-        bp_diastolic: patient.medical_data?.bp_diastolic || 0,
+        egfr: latestMedicalRecord?.egfr || '',
+        bmi: latestMedicalRecord?.bmi || '',
+        bp_systolic: latestMedicalRecord?.bp_systolic || 0,
+        bp_diastolic: latestMedicalRecord?.bp_diastolic || 0,
 
         // Liver & Lipid Profile
-        alt: patient.medical_data?.alt || '',
-        ldl: patient.medical_data?.ldl || '',
-        hdl: patient.medical_data?.hdl || '',
-        triglycerides: patient.medical_data?.triglycerides || '',
+        alt: latestMedicalRecord?.alt || '',
+        ldl: latestMedicalRecord?.ldl || '',
+        hdl: latestMedicalRecord?.hdl || '',
+        triglycerides: latestMedicalRecord?.triglycerides || '',
 
         // Medical History
-        previous_prediabetes: patient.medical_data?.previous_prediabetes || false,
-        hypertension: patient.medical_data?.hypertension || false,
-        ckd: patient.medical_data?.ckd || false,
-        cvd: patient.medical_data?.cvd || false,
-        nafld: patient.medical_data?.nafld || false,
-        retinopathy: patient.medical_data?.retinopathy || false,
+        previous_prediabetes: latestMedicalRecord?.previous_prediabetes || false,
+        hypertension: latestMedicalRecord?.hypertension || false,
+        ckd: latestMedicalRecord?.ckd || false,
+        cvd: latestMedicalRecord?.cvd || false,
+        nafld: latestMedicalRecord?.nafld || false,
+        retinopathy: latestMedicalRecord?.retinopathy || false,
     });
 
     const [formData, setFormData] = useState(getInitialFormData());
@@ -66,29 +71,29 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
 
     // Update form when patient data changes
     useEffect(() => {
-        if (patient.medical_data) {
+        if (latestMedicalRecord) {
             const newFormData = {
-                age: patient.medical_data.age,
-                gender: patient.medical_data.gender as GenderType,
-                ethnicity: patient.medical_data.ethnicity as EthnicityType,
-                hba1c_baseline: patient.medical_data.hba1c_baseline,
-                diabetes_duration: patient.medical_data.diabetes_duration,
-                fasting_glucose: patient.medical_data.fasting_glucose,
-                c_peptide: patient.medical_data.c_peptide,
-                egfr: patient.medical_data.egfr,
-                bmi: patient.medical_data.bmi,
-                bp_systolic: patient.medical_data.bp_systolic,
-                bp_diastolic: patient.medical_data.bp_diastolic,
-                alt: patient.medical_data.alt,
-                ldl: patient.medical_data.ldl,
-                hdl: patient.medical_data.hdl,
-                triglycerides: patient.medical_data.triglycerides,
-                previous_prediabetes: patient.medical_data.previous_prediabetes,
-                hypertension: patient.medical_data.hypertension,
-                ckd: patient.medical_data.ckd,
-                cvd: patient.medical_data.cvd,
-                nafld: patient.medical_data.nafld,
-                retinopathy: patient.medical_data.retinopathy,
+                age: latestMedicalRecord.age,
+                gender: latestMedicalRecord.gender as GenderType,
+                ethnicity: latestMedicalRecord.ethnicity as EthnicityType,
+                hba1c_baseline: latestMedicalRecord.hba1c_baseline,
+                diabetes_duration: latestMedicalRecord.diabetes_duration,
+                fasting_glucose: latestMedicalRecord.fasting_glucose,
+                c_peptide: latestMedicalRecord.c_peptide,
+                egfr: latestMedicalRecord.egfr,
+                bmi: latestMedicalRecord.bmi,
+                bp_systolic: latestMedicalRecord.bp_systolic,
+                bp_diastolic: latestMedicalRecord.bp_diastolic,
+                alt: latestMedicalRecord.alt,
+                ldl: latestMedicalRecord.ldl,
+                hdl: latestMedicalRecord.hdl,
+                triglycerides: latestMedicalRecord.triglycerides,
+                previous_prediabetes: latestMedicalRecord.previous_prediabetes,
+                hypertension: latestMedicalRecord.hypertension,
+                ckd: latestMedicalRecord.ckd,
+                cvd: latestMedicalRecord.cvd,
+                nafld: latestMedicalRecord.nafld,
+                retinopathy: latestMedicalRecord.retinopathy,
             };
 
             setFormData(prevData => {
@@ -98,7 +103,7 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                 return prevData;
             });
         }
-    }, [patient.medical_data]);
+    }, [latestMedicalRecord]);
 
     const handleChange = (field: string, value: string | number | boolean) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -139,9 +144,13 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
             retinopathy: formData.retinopathy,
         };
 
-        if (hasMedicalData) {
+        if (hasMedicalData && latestMedicalRecord) {
             updateMedicalData.mutate(
-                { patientId: patient.id, data: submitData },
+                {
+                    medicalDataId: latestMedicalRecord.id,
+                    patientId: patient.id,
+                    data: submitData,
+                },
                 {
                     onSuccess: () => {
                         showToast(
@@ -608,13 +617,13 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     border-radius: 10px;
                     margin-bottom: 20px;
                 }
-            
+
                 .form-section {
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
                 }
-            
+
                 .form-section-title {
                     font-size: 16px;
                     font-weight: 600;
@@ -624,23 +633,23 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
                     letter-spacing: -0.3px;
                 }
-            
+
                 .form-grid {
                     display: grid;
                     grid-template-columns: repeat(2, 1fr);
                     gap: 20px;
                 }
-            
+
                 .form-group {
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
                 }
-            
+
                 .form-group.full-width {
                     grid-column: 1 / -1;
                 }
-            
+
                 .form-label {
                     font-size: 12px;
                     color: rgba(255, 255, 255, 0.6);
@@ -648,7 +657,7 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
-            
+
                 .form-input {
                     padding: 12px 14px;
                     background: rgba(255, 255, 255, 0.03);
@@ -660,37 +669,36 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     transition: all 0.2s ease;
                     font-family: inherit;
                 }
-            
+
                 .form-input::placeholder {
                     color: rgba(255, 255, 255, 0.3);
                 }
-            
+
                 .form-input:hover {
                     border-color: rgba(255, 255, 255, 0.15);
                 }
-            
+
                 .form-input:focus {
                     border-color: rgba(16, 185, 129, 0.4);
                     background: rgba(255, 255, 255, 0.05);
                     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
                 }
-            
+
                 .form-input.error {
                     border-color: rgba(239, 68, 68, 0.5);
                     background: rgba(239, 68, 68, 0.05);
                 }
-            
-                /* Select dropdown styling */
+
                 select.form-input {
                     cursor: pointer;
                 }
-            
+
                 .info-text {
                     font-size: 11px;
                     color: rgba(255, 255, 255, 0.4);
                     font-style: italic;
                 }
-            
+
                 .error-text {
                     font-size: 12px;
                     color: #ef4444;
@@ -699,12 +707,12 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     gap: 4px;
                     margin-top: -4px;
                 }
-            
+
                 .error-text::before {
                     content: '⚠';
                     font-size: 11px;
                 }
-            
+
                 .form-group-inline {
                     display: flex;
                     align-items: center;
@@ -713,7 +721,7 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     background: rgba(255, 255, 255, 0.02);
                     border-radius: 6px;
                 }
-            
+
                 .form-checkbox {
                     width: 18px;
                     height: 18px;
@@ -727,16 +735,16 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     position: relative;
                     flex-shrink: 0;
                 }
-            
+
                 .form-checkbox:hover {
                     border-color: rgba(255, 255, 255, 0.3);
                 }
-            
+
                 .form-checkbox:checked {
                     background: #10b981;
                     border-color: #10b981;
                 }
-            
+
                 .form-checkbox:checked::after {
                     content: '✓';
                     position: absolute;
@@ -747,12 +755,12 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     font-size: 12px;
                     font-weight: bold;
                 }
-            
+
                 .form-checkbox:focus {
                     outline: none;
                     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
                 }
-            
+
                 .checkbox-label {
                     font-size: 13px;
                     color: rgba(255, 255, 255, 0.8);
@@ -760,13 +768,13 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     user-select: none;
                     font-weight: 400;
                 }
-            
+
                 .form-actions-wrapper {
                     display: flex;
                     justify-content: flex-end;
                     margin-top: 24px;
                 }
-            
+
                 .form-btn {
                     padding: 11px 24px;
                     border-radius: 8px;
@@ -779,66 +787,63 @@ export function MedicalDataTab({ patient }: MedicalDataTabProps) {
                     gap: 8px;
                     border: 1px solid;
                 }
-            
+
                 .form-btn:disabled {
                     opacity: 0.5;
                     cursor: not-allowed;
                 }
-            
+
                 .form-btn.submit {
                     background: linear-gradient(135deg, #047857, #10b981);
                     border-color: rgba(16, 185, 129, 0.3);
                     color: white;
                 }
-            
+
                 .form-btn.submit:hover:not(:disabled) {
                     background: linear-gradient(135deg, #059669, #34d399);
                     border-color: rgba(16, 185, 129, 0.4);
                     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
                     transform: translateY(-1px);
                 }
-            
+
                 .form-btn.submit:active:not(:disabled) {
                     transform: translateY(0);
                 }
-            
-                /* Force dark background on dropdown options */
+
                 select.form-input option {
                     background-color: #0c1821 !important;
                     color: #ffffff !important;
                 }
-            
-                /* Webkit/Chrome specific */
+
                 select.form-input option:checked,
                 select.form-input option:hover {
                     background-color: #1a2b3a !important;
                     color: #34d399 !important;
                 }
-            
+
                 @media (max-width: 768px) {
                     .section-card {
                         padding: 16px;
                     }
-            
+
                     .form-grid {
                         grid-template-columns: 1fr;
                         gap: 16px;
                     }
-            
+
                     .form-group.full-width {
                         grid-column: 1;
                     }
-            
+
                     .form-actions-wrapper {
                         justify-content: stretch;
                     }
-            
+
                     .form-btn {
                         width: 100%;
                         justify-content: center;
                     }
                 }
-                
             `}</style>
         </>
     );
