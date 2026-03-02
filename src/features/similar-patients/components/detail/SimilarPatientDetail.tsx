@@ -1,8 +1,3 @@
-/**
- * SimilarPatientDetail Component
- * Main container for similar patient case detail page with tabs
- */
-
 'use client';
 
 import { useState } from 'react';
@@ -12,6 +7,7 @@ import { DemographicsSection } from './DemographicsSection';
 import { ClinicalFeaturesSection } from './ClinicalFeaturesSection';
 import { TreatmentSection } from './TreatmentSection';
 import { OutcomeSection } from './OutcomeSection';
+import { Loader2, CircleAlert, User, ClipboardList, Pill, ChartLine } from 'lucide-react';
 
 interface SimilarPatientDetailProps {
     caseId: string;
@@ -23,164 +19,71 @@ export function SimilarPatientDetail({ caseId }: SimilarPatientDetailProps) {
     const [activeTab, setActiveTab] = useState<TabType>('demographics');
     const { data: patientCase, isLoading, error } = useSimilarPatientDetail(caseId);
 
-    const tabs: { id: TabType; label: string; icon: string }[] = [
-        { id: 'demographics', label: 'Demographics', icon: 'fa-user' },
-        { id: 'clinical', label: 'Clinical Features', icon: 'fa-notes-medical' },
-        { id: 'treatment', label: 'Treatment', icon: 'fa-prescription-bottle-medical' },
-        { id: 'outcome', label: 'Outcome', icon: 'fa-chart-line' },
+    const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
+        { id: 'demographics', label: 'Demographics', icon: User },
+        { id: 'clinical', label: 'Clinical Features', icon: ClipboardList },
+        { id: 'treatment', label: 'Treatment', icon: Pill },
+        { id: 'outcome', label: 'Outcome', icon: ChartLine },
     ];
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="loading-spinner">
-                    <i className="fa-solid fa-spinner fa-spin"></i>
-                    <span>Loading case details...</span>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                <span>Loading case details...</span>
             </div>
         );
     }
 
     if (error || !patientCase) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="error-message">
-                    <i className="fa-solid fa-circle-exclamation"></i>
-                    <span>Error loading case details</span>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+                <CircleAlert className="h-7 w-7 text-red-500" />
+                <span>Error loading case details</span>
             </div>
         );
     }
 
     return (
-        <>
-            <div className="detail-container">
-                {/* Detail Header */}
-                <DetailHeader patientCase={patientCase} />
+        <div className="max-w-[1200px] mx-auto">
+            <DetailHeader patientCase={patientCase} />
 
-                {/* Tab Navigation */}
-                <div className="tab-navigation">
-                    {tabs.map((tab) => (
+            {/* Tab Navigation */}
+            <div className="flex gap-1 bg-white/[0.04] border border-white/10 rounded-none p-1 mb-5">
+                {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
                         <button
                             key={tab.id}
-                            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
                             onClick={() => setActiveTab(tab.id)}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-none text-[12px] font-semibold transition-colors ${
+                                activeTab === tab.id
+                                    ? 'bg-primary/15 text-primary'
+                                    : 'text-muted-foreground/60 hover:text-foreground/90 hover:bg-white/[0.04]'
+                            }`}
                         >
-                            <i className={`fa-solid ${tab.icon}`}></i>
+                            <Icon className="h-3.5 w-3.5" />
                             <span>{tab.label}</span>
                         </button>
-                    ))}
-                </div>
-
-                {/* Tab Content */}
-                <div className="tab-content-container">
-                    {activeTab === 'demographics' && (
-                        <DemographicsSection
-                            demographics={patientCase.demographics}
-                            comorbidities={patientCase.comorbidities}
-                        />
-                    )}
-                    {activeTab === 'clinical' && (
-                        <ClinicalFeaturesSection
-                            features={patientCase.clinical_features}
-                            categories={patientCase.clinical_categories}
-                        />
-                    )}
-                    {activeTab === 'treatment' && patientCase.treatment && (
-                        <TreatmentSection treatment={patientCase.treatment} />
-                    )}
-                    {activeTab === 'outcome' && patientCase.outcome && (
-                        <OutcomeSection outcome={patientCase.outcome} />
-                    )}
-                </div>
+                    );
+                })}
             </div>
 
-            <style jsx>{`
-                .loading-spinner,
-                .error-message {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 12px;
-                    color: #ffffff;
-                    font-size: 16px;
-                }
-
-                .loading-spinner i,
-                .error-message i {
-                    font-size: 32px;
-                    color: #10b981;
-                }
-
-                .error-message i {
-                    color: #ef4444;
-                }
-
-                .detail-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                }
-
-                .tab-navigation {
-                    display: flex;
-                    gap: 4px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    padding: 4px;
-                    margin-bottom: 20px;
-                }
-
-                .tab-btn {
-                    flex: 1;
-                    padding: 11px 20px;
-                    background: transparent;
-                    border: none;
-                    border-radius: 8px;
-                    color: rgba(255, 255, 255, 0.6);
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                }
-
-                .tab-btn:hover {
-                    color: rgba(255, 255, 255, 0.9);
-                    background: rgba(255, 255, 255, 0.04);
-                }
-
-                .tab-btn.active {
-                    background: rgba(16, 185, 129, 0.15);
-                    color: #34d399;
-                }
-
-                .tab-btn i {
-                    font-size: 13px;
-                }
-
-                .tab-content-container {
-                    margin-bottom: 100px;
-                }
-
-                @media (max-width: 768px) {
-                    .detail-container {
-                        padding: 0;
-                    }
-
-                    .tab-navigation {
-                        flex-direction: column;
-                    }
-
-                    .tab-btn {
-                        justify-content: flex-start;
-                        padding: 12px 16px;
-                    }
-                }
-            `}</style>
-        </>
+            {/* Tab Content */}
+            <div className="mb-24">
+                {activeTab === 'demographics' && (
+                    <DemographicsSection demographics={patientCase.demographics} comorbidities={patientCase.comorbidities} />
+                )}
+                {activeTab === 'clinical' && (
+                    <ClinicalFeaturesSection features={patientCase.clinical_features} categories={patientCase.clinical_categories} />
+                )}
+                {activeTab === 'treatment' && patientCase.treatment && (
+                    <TreatmentSection treatment={patientCase.treatment} />
+                )}
+                {activeTab === 'outcome' && patientCase.outcome && (
+                    <OutcomeSection outcome={patientCase.outcome} />
+                )}
+            </div>
+        </div>
     );
 }

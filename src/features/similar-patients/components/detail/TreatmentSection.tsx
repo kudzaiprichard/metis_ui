@@ -1,303 +1,108 @@
-/**
- * TreatmentSection Component
- * Display treatment information
- */
-
 'use client';
 
+import { Card } from '@/src/components/shadcn/card';
 import { TreatmentInfo } from '../../api/similar-patients.types';
+import { Pill, DollarSign, FlaskConical, Tag, Award, Info } from 'lucide-react';
 
 interface TreatmentSectionProps {
     treatment: TreatmentInfo;
 }
 
 export function TreatmentSection({ treatment }: TreatmentSectionProps) {
-    const getCostColor = (category: string) => {
-        const colors: Record<string, string> = {
-            'Low': '#34d399',
-            'Medium': '#fb923c',
-            'High': '#f87171',
-        };
-        return colors[category] || '#9ca3af';
+    const costStyles: Record<string, string> = {
+        Low: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25',
+        Medium: 'text-orange-400 bg-orange-500/15 border-orange-500/25',
+        High: 'text-red-400 bg-red-500/15 border-red-500/25',
     };
 
-    const getEvidenceColor = (level: string) => {
-        const colors: Record<string, string> = {
-            'High': '#34d399',
-            'Moderate': '#60a5fa',
-            'Low': '#fb923c',
-        };
-        return colors[level] || '#9ca3af';
+    const evidenceStyles: Record<string, string> = {
+        High: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25',
+        Moderate: 'text-blue-400 bg-blue-500/15 border-blue-500/25',
+        Low: 'text-orange-400 bg-orange-500/15 border-orange-500/25',
+    };
+
+    const costDesc: Record<string, string> = {
+        Low: 'Generally affordable and cost-effective',
+        Medium: 'Moderately priced treatment option',
+        High: 'Premium priced treatment option',
+    };
+
+    const evidenceDesc: Record<string, string> = {
+        High: 'Strong clinical evidence supporting efficacy',
+        Moderate: 'Adequate clinical evidence available',
+        Low: 'Limited clinical evidence available',
     };
 
     return (
-        <>
-            <div className="section-container">
-                {/* Treatment Overview */}
-                <div className="info-card highlight">
-                    <div className="card-header">
-                        <i className="fa-solid fa-prescription-bottle-medical"></i>
-                        <h3>Treatment Given</h3>
+        <div className="flex flex-col gap-5">
+            {/* Treatment Overview */}
+            <Card className="border-primary/15 bg-primary/[0.05] rounded-none p-5">
+                <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-3 mb-4 border-b border-white/[0.08] flex items-center gap-2">
+                    <Pill className="h-3.5 w-3.5" />
+                    Treatment Given
+                </h3>
+                <div className="flex justify-between items-center gap-5">
+                    <div className="flex-1 min-w-0">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block mb-2">
+                            Drug Name
+                        </span>
+                        <h2 className="text-[24px] font-bold text-primary tracking-tight truncate">
+                            {treatment.drug_name}
+                        </h2>
                     </div>
-
-                    <div className="treatment-overview">
-                        <div className="drug-name-section">
-                            <span className="drug-label">Drug Name</span>
-                            <h2 className="drug-name">{treatment.drug_name}</h2>
-                        </div>
-                        <div className="drug-class-badge">
-                            <i className="fa-solid fa-pills"></i>
-                            <span>{treatment.drug_class}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Treatment Details */}
-                <div className="details-grid">
-                    {/* Cost Category */}
-                    <div className="info-card">
-                        <div className="card-header">
-                            <i className="fa-solid fa-dollar-sign"></i>
-                            <h3>Cost Category</h3>
-                        </div>
-
-                        <div className="detail-content">
-                            <div
-                                className="cost-badge"
-                                style={{
-                                    background: `${getCostColor(treatment.cost_category)}20`,
-                                    color: getCostColor(treatment.cost_category),
-                                    borderColor: `${getCostColor(treatment.cost_category)}40`
-                                }}
-                            >
-                                <i className="fa-solid fa-tag"></i>
-                                <span>{treatment.cost_category}</span>
-                            </div>
-                            <p className="detail-description">
-                                {treatment.cost_category === 'Low' && 'Generally affordable and cost-effective'}
-                                {treatment.cost_category === 'Medium' && 'Moderately priced treatment option'}
-                                {treatment.cost_category === 'High' && 'Premium priced treatment option'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Evidence Level */}
-                    <div className="info-card">
-                        <div className="card-header">
-                            <i className="fa-solid fa-flask"></i>
-                            <h3>Evidence Level</h3>
-                        </div>
-
-                        <div className="detail-content">
-                            <div
-                                className="evidence-badge"
-                                style={{
-                                    background: `${getEvidenceColor(treatment.evidence_level)}20`,
-                                    color: getEvidenceColor(treatment.evidence_level),
-                                    borderColor: `${getEvidenceColor(treatment.evidence_level)}40`
-                                }}
-                            >
-                                <i className="fa-solid fa-certificate"></i>
-                                <span>{treatment.evidence_level}</span>
-                            </div>
-                            <p className="detail-description">
-                                {treatment.evidence_level === 'High' && 'Strong clinical evidence supporting efficacy'}
-                                {treatment.evidence_level === 'Moderate' && 'Adequate clinical evidence available'}
-                                {treatment.evidence_level === 'Low' && 'Limited clinical evidence available'}
-                            </p>
-                        </div>
+                    <div className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-primary/[0.12] border border-primary/25 rounded-none text-[13px] font-semibold text-primary whitespace-nowrap flex-shrink-0">
+                        <Pill className="h-3.5 w-3.5" />
+                        {treatment.drug_class}
                     </div>
                 </div>
+            </Card>
 
-                {/* Information Note */}
-                <div className="info-note">
-                    <i className="fa-solid fa-circle-info"></i>
-                    <p>
-                        This treatment information is from historical data and represents what was administered
-                        to this similar patient case. Always consult current clinical guidelines and patient-specific
-                        factors when making treatment decisions.
-                    </p>
-                </div>
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 gap-5">
+                {/* Cost */}
+                <Card className="border-white/[0.08] bg-white/[0.03] rounded-none p-5">
+                    <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-3 mb-4 border-b border-white/[0.08] flex items-center gap-2">
+                        <DollarSign className="h-3.5 w-3.5" />
+                        Cost Category
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-none border text-[14px] font-bold w-fit ${costStyles[treatment.cost_category] || 'text-muted-foreground bg-white/[0.06] border-white/10'}`}>
+                            <Tag className="h-3.5 w-3.5" />
+                            {treatment.cost_category}
+                        </div>
+                        <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+                            {costDesc[treatment.cost_category]}
+                        </p>
+                    </div>
+                </Card>
+
+                {/* Evidence */}
+                <Card className="border-white/[0.08] bg-white/[0.03] rounded-none p-5">
+                    <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-3 mb-4 border-b border-white/[0.08] flex items-center gap-2">
+                        <FlaskConical className="h-3.5 w-3.5" />
+                        Evidence Level
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-none border text-[14px] font-bold w-fit ${evidenceStyles[treatment.evidence_level] || 'text-muted-foreground bg-white/[0.06] border-white/10'}`}>
+                            <Award className="h-3.5 w-3.5" />
+                            {treatment.evidence_level}
+                        </div>
+                        <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+                            {evidenceDesc[treatment.evidence_level]}
+                        </p>
+                    </div>
+                </Card>
             </div>
 
-            <style jsx>{`
-                .section-container {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }
-
-                .info-card {
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 12px;
-                    padding: 20px;
-                }
-
-                .info-card.highlight {
-                    background: rgba(16, 185, 129, 0.05);
-                    border: 1px solid rgba(16, 185, 129, 0.15);
-                }
-
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                    padding-bottom: 16px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .card-header i {
-                    color: #34d399;
-                    font-size: 18px;
-                }
-
-                .card-header h3 {
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    margin: 0;
-                    letter-spacing: -0.3px;
-                }
-
-                .treatment-overview {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 20px;
-                }
-
-                .drug-name-section {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .drug-label {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                    display: block;
-                    margin-bottom: 8px;
-                }
-
-                .drug-name {
-                    font-size: 28px;
-                    font-weight: 700;
-                    color: #34d399;
-                    margin: 0;
-                    letter-spacing: -0.5px;
-                }
-
-                .drug-class-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 12px 16px;
-                    background: rgba(16, 185, 129, 0.12);
-                    border: 1px solid rgba(16, 185, 129, 0.25);
-                    border-radius: 10px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #34d399;
-                    white-space: nowrap;
-                }
-
-                .drug-class-badge i {
-                    font-size: 16px;
-                }
-
-                .details-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 20px;
-                }
-
-                .detail-content {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .cost-badge,
-                .evidence-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 10px 14px;
-                    border-radius: 8px;
-                    font-size: 15px;
-                    font-weight: 700;
-                    border: 1px solid;
-                    width: fit-content;
-                }
-
-                .cost-badge i,
-                .evidence-badge i {
-                    font-size: 13px;
-                }
-
-                .detail-description {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.6);
-                    line-height: 1.6;
-                    margin: 0;
-                }
-
-                .info-note {
-                    display: flex;
-                    gap: 12px;
-                    padding: 16px 18px;
-                    background: rgba(59, 130, 246, 0.08);
-                    border: 1px solid rgba(59, 130, 246, 0.15);
-                    border-radius: 10px;
-                }
-
-                .info-note i {
-                    color: #60a5fa;
-                    font-size: 18px;
-                    flex-shrink: 0;
-                    margin-top: 2px;
-                }
-
-                .info-note p {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.7);
-                    line-height: 1.6;
-                    margin: 0;
-                }
-
-                @media (max-width: 768px) {
-                    .info-card {
-                        padding: 16px;
-                    }
-
-                    .treatment-overview {
-                        flex-direction: column;
-                        align-items: flex-start;
-                    }
-
-                    .drug-name {
-                        font-size: 22px;
-                    }
-
-                    .drug-class-badge {
-                        align-self: flex-start;
-                    }
-
-                    .details-grid {
-                        grid-template-columns: 1fr;
-                        gap: 16px;
-                    }
-
-                    .info-note {
-                        padding: 14px;
-                        gap: 10px;
-                    }
-                }
-            `}</style>
-        </>
+            {/* Info Note */}
+            <div className="flex gap-3 p-3.5 bg-blue-500/[0.08] border border-blue-500/15 rounded-none">
+                <Info className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-[12px] text-muted-foreground/70 leading-relaxed">
+                    This treatment information is from historical data and represents what was administered
+                    to this similar patient case. Always consult current clinical guidelines and patient-specific
+                    factors when making treatment decisions.
+                </p>
+            </div>
+        </div>
     );
 }

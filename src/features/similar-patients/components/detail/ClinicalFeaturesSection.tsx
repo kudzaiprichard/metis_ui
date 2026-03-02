@@ -1,11 +1,17 @@
-/**
- * ClinicalFeaturesSection Component
- * Display clinical features and categories
- */
-
 'use client';
 
+import { Card } from '@/src/components/shadcn/card';
 import { ClinicalFeatures, ClinicalCategories } from '../../api/similar-patients.types';
+import {
+    Tags,
+    Weight,
+    Droplet,
+    HeartPulse,
+    ChartLine,
+    FlaskConical,
+    Check,
+    X,
+} from 'lucide-react';
 
 interface ClinicalFeaturesSectionProps {
     features: ClinicalFeatures;
@@ -13,320 +19,108 @@ interface ClinicalFeaturesSectionProps {
 }
 
 export function ClinicalFeaturesSection({ features, categories }: ClinicalFeaturesSectionProps) {
+    const categoryItems = [
+        { icon: Weight, label: 'BMI Category', value: categories.bmi_category },
+        { icon: Droplet, label: 'HbA1c Severity', value: categories.hba1c_severity },
+        { icon: HeartPulse, label: 'Kidney Function', value: categories.kidney_function },
+    ];
+
+    const sections = [
+        {
+            title: 'Diabetes Profile',
+            icon: ChartLine,
+            fields: [
+                { label: 'HbA1c Baseline', value: `${features.hba1c_baseline}%` },
+                { label: 'Diabetes Duration', value: `${features.diabetes_duration} yrs` },
+                { label: 'Fasting Glucose', value: `${features.fasting_glucose} mg/dL` },
+                { label: 'C-Peptide', value: `${features.c_peptide} ng/mL` },
+                {
+                    label: 'Previous Prediabetes',
+                    value: features.previous_prediabetes,
+                    isBool: true,
+                },
+            ],
+        },
+        {
+            title: 'Metabolic & Cardiovascular',
+            icon: HeartPulse,
+            fields: [
+                { label: 'eGFR', value: `${features.egfr} mL/min/1.73m²` },
+                { label: 'BMI', value: `${features.bmi} kg/m²` },
+                { label: 'BP Systolic', value: `${features.bp_systolic} mmHg` },
+                { label: 'BP Diastolic', value: `${features.bp_diastolic} mmHg` },
+            ],
+        },
+        {
+            title: 'Liver & Lipid Profile',
+            icon: FlaskConical,
+            fields: [
+                { label: 'ALT', value: `${features.alt} U/L` },
+                { label: 'LDL', value: `${features.ldl} mg/dL` },
+                { label: 'HDL', value: `${features.hdl} mg/dL` },
+                { label: 'Triglycerides', value: `${features.triglycerides} mg/dL` },
+            ],
+        },
+    ];
+
     return (
-        <>
-            <div className="section-container">
-                {/* Clinical Categories */}
-                <div className="info-card">
-                    <div className="card-header">
-                        <i className="fa-solid fa-tags"></i>
-                        <h3>Clinical Categories</h3>
-                    </div>
-
-                    <div className="categories-grid">
-                        <div className="category-item">
-                            <div className="category-icon">
-                                <i className="fa-solid fa-weight-scale"></i>
+        <div className="flex flex-col gap-5">
+            {/* Clinical Categories */}
+            <Card className="border-white/[0.08] bg-white/[0.03] rounded-none p-5">
+                <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-3 mb-4 border-b border-white/[0.08] flex items-center gap-2">
+                    <Tags className="h-3.5 w-3.5" />
+                    Clinical Categories
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                    {categoryItems.map((item) => (
+                        <div key={item.label} className="flex items-center gap-3 p-3.5 bg-white/[0.02] border border-white/5 rounded-none">
+                            <div className="w-10 h-10 rounded-none bg-primary/[0.12] border border-primary/20 flex items-center justify-center flex-shrink-0">
+                                <item.icon className="h-4 w-4 text-primary" />
                             </div>
-                            <div className="category-content">
-                                <span className="category-label">BMI Category</span>
-                                <span className="category-value">{categories.bmi_category}</span>
-                            </div>
-                        </div>
-
-                        <div className="category-item">
-                            <div className="category-icon">
-                                <i className="fa-solid fa-droplet"></i>
-                            </div>
-                            <div className="category-content">
-                                <span className="category-label">HbA1c Severity</span>
-                                <span className="category-value">{categories.hba1c_severity}</span>
+                            <div className="flex flex-col gap-1 min-w-0">
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                                    {item.label}
+                                </span>
+                                <span className="text-[13px] font-semibold text-foreground truncate">
+                                    {item.value}
+                                </span>
                             </div>
                         </div>
-
-                        <div className="category-item">
-                            <div className="category-icon">
-                                <i className="fa-solid fa-heart-pulse"></i>
-                            </div>
-                            <div className="category-content">
-                                <span className="category-label">Kidney Function</span>
-                                <span className="category-value">{categories.kidney_function}</span>
-                            </div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
+            </Card>
 
-                {/* Diabetes Profile */}
-                <div className="info-card">
-                    <div className="card-header">
-                        <i className="fa-solid fa-chart-line"></i>
-                        <h3>Diabetes Profile</h3>
-                    </div>
-
-                    <div className="features-grid">
-                        <div className="feature-item">
-                            <span className="feature-label">HbA1c Baseline</span>
-                            <span className="feature-value">{features.hba1c_baseline}%</span>
+            {/* Data Sections */}
+            {sections.map((section) => {
+                const Icon = section.icon;
+                return (
+                    <Card key={section.title} className="border-white/[0.08] bg-white/[0.03] rounded-none p-5">
+                        <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-3 mb-4 border-b border-white/[0.08] flex items-center gap-2">
+                            <Icon className="h-3.5 w-3.5" />
+                            {section.title}
+                        </h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            {section.fields.map((f) => (
+                                <div key={f.label} className="p-3 bg-white/[0.02] border border-white/5 rounded-none space-y-1.5">
+                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block">
+                                        {f.label}
+                                    </span>
+                                    {'isBool' in f && f.isBool ? (
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[12px] font-semibold ${f.value ? 'bg-primary/[0.12] text-primary' : 'bg-white/[0.06] text-muted-foreground/60'}`}>
+                                            {f.value ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                                            {f.value ? 'Yes' : 'No'}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[13px] font-semibold text-foreground block">
+                                            {f.value as string}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
                         </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">Diabetes Duration</span>
-                            <span className="feature-value">{features.diabetes_duration} yrs</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">Fasting Glucose</span>
-                            <span className="feature-value">{features.fasting_glucose} mg/dL</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">C-Peptide</span>
-                            <span className="feature-value">{features.c_peptide} ng/mL</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">Previous Prediabetes</span>
-                            <span className={`feature-badge ${features.previous_prediabetes ? 'yes' : 'no'}`}>
-                                <i className={`fa-solid ${features.previous_prediabetes ? 'fa-check' : 'fa-xmark'}`}></i>
-                                {features.previous_prediabetes ? 'Yes' : 'No'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Metabolic & Cardiovascular */}
-                <div className="info-card">
-                    <div className="card-header">
-                        <i className="fa-solid fa-heart-circle-bolt"></i>
-                        <h3>Metabolic & Cardiovascular</h3>
-                    </div>
-
-                    <div className="features-grid">
-                        <div className="feature-item">
-                            <span className="feature-label">eGFR</span>
-                            <span className="feature-value">{features.egfr} mL/min/1.73m²</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">BMI</span>
-                            <span className="feature-value">{features.bmi} kg/m²</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">BP Systolic</span>
-                            <span className="feature-value">{features.bp_systolic} mmHg</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">BP Diastolic</span>
-                            <span className="feature-value">{features.bp_diastolic} mmHg</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Liver & Lipid Profile */}
-                <div className="info-card">
-                    <div className="card-header">
-                        <i className="fa-solid fa-vial"></i>
-                        <h3>Liver & Lipid Profile</h3>
-                    </div>
-
-                    <div className="features-grid">
-                        <div className="feature-item">
-                            <span className="feature-label">ALT</span>
-                            <span className="feature-value">{features.alt} U/L</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">LDL</span>
-                            <span className="feature-value">{features.ldl} mg/dL</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">HDL</span>
-                            <span className="feature-value">{features.hdl} mg/dL</span>
-                        </div>
-
-                        <div className="feature-item">
-                            <span className="feature-label">Triglycerides</span>
-                            <span className="feature-value">{features.triglycerides} mg/dL</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <style jsx>{`
-                .section-container {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }
-
-                .info-card {
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 12px;
-                    padding: 20px;
-                }
-
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                    padding-bottom: 16px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .card-header i {
-                    color: #34d399;
-                    font-size: 18px;
-                }
-
-                .card-header h3 {
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    margin: 0;
-                    letter-spacing: -0.3px;
-                }
-
-                .categories-grid {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 16px;
-                }
-
-                .category-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 16px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 10px;
-                }
-
-                .category-icon {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 10px;
-                    background: rgba(16, 185, 129, 0.12);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 18px;
-                    color: #34d399;
-                    flex-shrink: 0;
-                }
-
-                .category-content {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                    min-width: 0;
-                }
-
-                .category-label {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .category-value {
-                    font-size: 14px;
-                    color: #ffffff;
-                    font-weight: 600;
-                }
-
-                .features-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 16px;
-                }
-
-                .feature-item {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    padding: 14px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 8px;
-                }
-
-                .feature-label {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .feature-value {
-                    font-size: 15px;
-                    color: #ffffff;
-                    font-weight: 600;
-                }
-
-                .feature-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    width: fit-content;
-                }
-
-                .feature-badge.yes {
-                    background: rgba(16, 185, 129, 0.12);
-                    color: #34d399;
-                }
-
-                .feature-badge.no {
-                    background: rgba(107, 114, 128, 0.12);
-                    color: rgba(255, 255, 255, 0.6);
-                }
-
-                .feature-badge i {
-                    font-size: 10px;
-                }
-
-                @media (max-width: 768px) {
-                    .info-card {
-                        padding: 16px;
-                    }
-
-                    .categories-grid {
-                        grid-template-columns: 1fr;
-                        gap: 12px;
-                    }
-
-                    .category-item {
-                        padding: 12px;
-                    }
-
-                    .category-icon {
-                        width: 40px;
-                        height: 40px;
-                        font-size: 16px;
-                    }
-
-                    .features-grid {
-                        grid-template-columns: 1fr;
-                        gap: 12px;
-                    }
-
-                    .feature-item {
-                        padding: 12px;
-                    }
-                }
-            `}</style>
-        </>
+                    </Card>
+                );
+            })}
+        </div>
     );
 }
