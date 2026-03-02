@@ -1,12 +1,22 @@
-/**
- * SimilarPatientCard Component
- * Card view for displaying a similar patient case
- */
-
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Card } from '@/src/components/shadcn/card';
+import { Button } from '@/src/components/shadcn/button';
 import { SimilarPatientCase } from '../../api/similar-patients.types';
+import {
+    IdCard,
+    Percent,
+    User,
+    Globe,
+    ChartLine,
+    Weight,
+    Pill,
+    TrendingDown,
+    CheckCircle,
+    XCircle,
+    Eye,
+} from 'lucide-react';
 
 interface SimilarPatientCardProps {
     case: SimilarPatientCase;
@@ -24,385 +34,111 @@ export function SimilarPatientCard({ case: patientCase }: SimilarPatientCardProp
     const comorbiditySimilarity = (patientCase.comorbidity_similarity * 100).toFixed(0);
     const hba1cReduction = parseFloat(patientCase.outcome.hba1c_reduction);
 
-    // Determine similarity color
-    const getSimilarityColor = (score: number) => {
-        if (score >= 0.8) return '#34d399'; // High
-        if (score >= 0.6) return '#60a5fa'; // Medium
-        return '#fb923c'; // Low
+    const getSimilarityStyle = (score: number) => {
+        if (score >= 0.8) return 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25';
+        if (score >= 0.6) return 'text-blue-400 bg-blue-500/15 border-blue-500/25';
+        return 'text-orange-400 bg-orange-500/15 border-orange-500/25';
     };
 
-    const similarityColor = getSimilarityColor(patientCase.similarity_score);
-
     return (
-        <>
-            <div className="case-card" onClick={handleViewDetails}>
-                {/* Header with Case ID and Similarity */}
-                <div className="card-header">
-                    <div className="case-id">
-                        <i className="fa-solid fa-id-card"></i>
-                        <span>{patientCase.case_id}</span>
-                    </div>
-                    <div className="similarity-badge" style={{ background: `${similarityColor}20`, color: similarityColor, borderColor: `${similarityColor}40` }}>
-                        <i className="fa-solid fa-percent"></i>
-                        {similarityScore}%
-                    </div>
+        <Card
+            className="border-white/10 bg-white/[0.04] rounded-none overflow-hidden p-4 cursor-pointer hover:bg-white/[0.06] hover:border-white/15 transition-all"
+            onClick={handleViewDetails}
+        >
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/[0.08]">
+                <div className="flex items-center gap-2 text-[12px] font-semibold text-foreground/90">
+                    <IdCard className="h-3 w-3 text-muted-foreground/50" />
+                    <span className="truncate">{patientCase.case_id}</span>
                 </div>
-
-                {/* Patient Profile */}
-                <div className="profile-section">
-                    <div className="profile-row">
-                        <div className="profile-item">
-                            <i className="fa-solid fa-user"></i>
-                            <span>{patientCase.profile.age} yrs • {patientCase.profile.gender}</span>
-                        </div>
-                        <div className="profile-item">
-                            <i className="fa-solid fa-globe"></i>
-                            <span>{patientCase.profile.ethnicity}</span>
-                        </div>
-                    </div>
-                    <div className="profile-row">
-                        <div className="profile-item">
-                            <i className="fa-solid fa-chart-line"></i>
-                            <span>HbA1c: {patientCase.profile.hba1c_baseline}%</span>
-                        </div>
-                        <div className="profile-item">
-                            <i className="fa-solid fa-weight-scale"></i>
-                            <span>BMI: {patientCase.profile.bmi}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Similarity Breakdown */}
-                <div className="similarity-breakdown">
-                    <div className="breakdown-item">
-                        <span className="breakdown-label">Clinical</span>
-                        <span className="breakdown-value">{clinicalSimilarity}%</span>
-                    </div>
-                    <div className="breakdown-item">
-                        <span className="breakdown-label">Comorbidity</span>
-                        <span className="breakdown-value">{comorbiditySimilarity}%</span>
-                    </div>
-                </div>
-
-                {/* Comorbidities */}
-                {patientCase.comorbidities.length > 0 && (
-                    <div className="comorbidities-section">
-                        <div className="section-label">Comorbidities</div>
-                        <div className="comorbidity-tags">
-                            {patientCase.comorbidities.slice(0, 3).map((comorbidity, index) => (
-                                <span key={index} className="comorbidity-tag">
-                                    {comorbidity}
-                                </span>
-                            ))}
-                            {patientCase.comorbidities.length > 3 && (
-                                <span className="comorbidity-tag more">
-                                    +{patientCase.comorbidities.length - 3}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Treatment & Outcome */}
-                <div className="treatment-section">
-                    <div className="section-label">Treatment Given</div>
-                    <div className="treatment-badge">
-                        <i className="fa-solid fa-prescription-bottle-medical"></i>
-                        <span>{patientCase.treatment_given}</span>
-                        <span className="drug-class">({patientCase.drug_class})</span>
-                    </div>
-                </div>
-
-                <div className="outcome-section">
-                    <div className="outcome-stat">
-                        <i className="fa-solid fa-arrow-trend-down"></i>
-                        <span>HbA1c Reduction: <strong>{hba1cReduction.toFixed(2)}%</strong></span>
-                    </div>
-                    <div className={`outcome-badge ${patientCase.outcome.success ? 'success' : 'failure'}`}>
-                        <i className={`fa-solid ${patientCase.outcome.success ? 'fa-circle-check' : 'fa-circle-xmark'}`}></i>
-                        <span>{patientCase.outcome.outcome_category}</span>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="card-footer">
-                    <button className="view-btn" onClick={handleViewDetails}>
-                        <i className="fa-solid fa-eye"></i>
-                        <span>View Details</span>
-                    </button>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none border text-[12px] font-bold ${getSimilarityStyle(patientCase.similarity_score)}`}>
+                    <Percent className="h-3 w-3" />
+                    {similarityScore}%
                 </div>
             </div>
 
-            <style jsx>{`
-                .case-card {
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 12px;
-                    padding: 16px;
-                    transition: all 0.2s ease;
-                    cursor: pointer;
-                }
+            {/* Profile */}
+            <div className="bg-white/[0.02] border border-white/5 rounded-none p-3 mb-3">
+                <div className="grid grid-cols-2 gap-2">
+                    {[
+                        { icon: User, text: `${patientCase.profile.age} yrs • ${patientCase.profile.gender}` },
+                        { icon: Globe, text: patientCase.profile.ethnicity },
+                        { icon: ChartLine, text: `HbA1c: ${patientCase.profile.hba1c_baseline}%` },
+                        { icon: Weight, text: `BMI: ${patientCase.profile.bmi}` },
+                    ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[11px] text-foreground/70">
+                            <item.icon className="h-3 w-3 text-muted-foreground/40 flex-shrink-0" />
+                            <span className="truncate">{item.text}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
 
-                .case-card:hover {
-                    background: rgba(255, 255, 255, 0.06);
-                    border-color: rgba(255, 255, 255, 0.15);
-                    transform: translateY(-2px);
-                }
+            {/* Similarity Breakdown */}
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+                {[
+                    { label: 'Clinical', value: `${clinicalSimilarity}%` },
+                    { label: 'Comorbidity', value: `${comorbiditySimilarity}%` },
+                ].map((item) => (
+                    <div key={item.label} className="flex justify-between items-center p-2 bg-white/[0.02] rounded-none">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{item.label}</span>
+                        <span className="text-[12px] font-bold text-primary">{item.value}</span>
+                    </div>
+                ))}
+            </div>
 
-                .card-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 16px;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
+            {/* Comorbidities */}
+            {patientCase.comorbidities.length > 0 && (
+                <div className="mb-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Comorbidities</p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {patientCase.comorbidities.slice(0, 3).map((c, i) => (
+                            <span key={i} className="px-2 py-1 bg-red-500/10 border border-red-500/20 rounded-none text-[10px] font-semibold text-red-400">
+                                {c}
+                            </span>
+                        ))}
+                        {patientCase.comorbidities.length > 3 && (
+                            <span className="px-2 py-1 bg-white/[0.05] border border-white/10 rounded-none text-[10px] font-semibold text-muted-foreground/60">
+                                +{patientCase.comorbidities.length - 3}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
 
-                .case-id {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: rgba(255, 255, 255, 0.9);
-                }
+            {/* Treatment */}
+            <div className="mb-3">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Treatment Given</p>
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-primary/[0.08] border border-primary/15 rounded-none text-[12px] font-semibold text-primary">
+                    <Pill className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{patientCase.treatment_given}</span>
+                    <span className="text-[10px] font-medium text-primary/60 whitespace-nowrap">({patientCase.drug_class})</span>
+                </div>
+            </div>
 
-                .case-id i {
-                    color: rgba(255, 255, 255, 0.5);
-                    font-size: 12px;
-                }
+            {/* Outcome */}
+            <div className="flex justify-between items-center p-2.5 bg-white/[0.02] border border-white/5 rounded-none mb-3">
+                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-primary">
+                    <TrendingDown className="h-3 w-3" />
+                    HbA1c: <strong>{hba1cReduction.toFixed(2)}%</strong>
+                </div>
+                <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-none text-[10px] font-semibold ${patientCase.outcome.success ? 'bg-primary/[0.12] text-primary' : 'bg-red-500/[0.12] text-red-400'}`}>
+                    {patientCase.outcome.success ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                    {patientCase.outcome.outcome_category}
+                </div>
+            </div>
 
-                .similarity-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    border-radius: 8px;
-                    font-size: 13px;
-                    font-weight: 700;
-                    border: 1px solid;
-                }
-
-                .similarity-badge i {
-                    font-size: 11px;
-                }
-
-                .profile-section {
-                    background: rgba(255, 255, 255, 0.02);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 8px;
-                    padding: 12px;
-                    margin-bottom: 12px;
-                }
-
-                .profile-row {
-                    display: flex;
-                    gap: 12px;
-                    margin-bottom: 8px;
-                }
-
-                .profile-row:last-child {
-                    margin-bottom: 0;
-                }
-
-                .profile-item {
-                    flex: 1;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 12px;
-                    color: rgba(255, 255, 255, 0.7);
-                }
-
-                .profile-item i {
-                    color: rgba(255, 255, 255, 0.4);
-                    font-size: 11px;
-                }
-
-                .similarity-breakdown {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 10px;
-                    margin-bottom: 12px;
-                }
-
-                .breakdown-item {
-                    background: rgba(255, 255, 255, 0.02);
-                    border-radius: 6px;
-                    padding: 8px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
-                .breakdown-label {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-
-                .breakdown-value {
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: #34d399;
-                }
-
-                .comorbidities-section {
-                    margin-bottom: 12px;
-                }
-
-                .section-label {
-                    font-size: 10px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                }
-
-                .comorbidity-tags {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 6px;
-                }
-
-                .comorbidity-tag {
-                    padding: 4px 8px;
-                    background: rgba(239, 68, 68, 0.1);
-                    border: 1px solid rgba(239, 68, 68, 0.2);
-                    border-radius: 6px;
-                    font-size: 10px;
-                    font-weight: 600;
-                    color: #f87171;
-                }
-
-                .comorbidity-tag.more {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.1);
-                    color: rgba(255, 255, 255, 0.6);
-                }
-
-                .treatment-section {
-                    margin-bottom: 12px;
-                }
-
-                .treatment-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 10px 12px;
-                    background: rgba(16, 185, 129, 0.08);
-                    border: 1px solid rgba(16, 185, 129, 0.15);
-                    border-radius: 8px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: #34d399;
-                }
-
-                .treatment-badge i {
-                    font-size: 12px;
-                }
-
-                .drug-class {
-                    font-size: 11px;
-                    font-weight: 500;
-                    color: rgba(52, 211, 153, 0.7);
-                }
-
-                .outcome-section {
-                    background: rgba(255, 255, 255, 0.02);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 8px;
-                    padding: 10px 12px;
-                    margin-bottom: 12px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 12px;
-                }
-
-                .outcome-stat {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 12px;
-                    color: rgba(255, 255, 255, 0.7);
-                }
-
-                .outcome-stat i {
-                    color: #34d399;
-                    font-size: 11px;
-                }
-
-                .outcome-stat strong {
-                    color: #34d399;
-                }
-
-                .outcome-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    white-space: nowrap;
-                }
-
-                .outcome-badge.success {
-                    background: rgba(16, 185, 129, 0.12);
-                    color: #34d399;
-                }
-
-                .outcome-badge.failure {
-                    background: rgba(239, 68, 68, 0.12);
-                    color: #f87171;
-                }
-
-                .outcome-badge i {
-                    font-size: 10px;
-                }
-
-                .card-footer {
-                    padding-top: 12px;
-                    border-top: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .view-btn {
-                    width: 100%;
-                    padding: 10px;
-                    background: rgba(16, 185, 129, 0.12);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    border-radius: 8px;
-                    color: #34d399;
-                    font-size: 13px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                }
-
-                .view-btn:hover {
-                    background: rgba(16, 185, 129, 0.18);
-                    border-color: rgba(16, 185, 129, 0.3);
-                    color: #6ee7b7;
-                }
-
-                @media (max-width: 768px) {
-                    .outcome-section {
-                        flex-direction: column;
-                        align-items: flex-start;
-                    }
-
-                    .outcome-badge {
-                        align-self: flex-end;
-                    }
-                }
-            `}</style>
-        </>
+            {/* Footer */}
+            <div className="pt-3 border-t border-white/[0.08]">
+                <Button
+                    variant="ghost"
+                    onClick={handleViewDetails}
+                    className="w-full rounded-none h-9 text-[12px] font-semibold text-primary border border-primary/20 bg-primary/[0.08] hover:bg-primary/15"
+                >
+                    <Eye className="h-3 w-3 mr-1.5" />
+                    View Details
+                </Button>
+            </div>
+        </Card>
     );
 }
