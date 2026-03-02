@@ -195,9 +195,13 @@ export interface SimilarPatientDetail {
 
 /**
  * Request to find similar patients (tabular)
+ * Provide either patient_id (uses latest medical record) or
+ * medical_data_id (uses that specific record). If both provided,
+ * medical_data_id takes priority.
  */
 export interface FindSimilarPatientsRequest {
-    patient_id: string;
+    patient_id?: string;
+    medical_data_id?: string;
     limit?: number; // 1-20, default 5
     treatment_filter?: string; // e.g., 'Metformin', 'GLP-1', 'SGLT-2'
     min_similarity?: number; // 0.0-1.0, default 0.5
@@ -205,9 +209,13 @@ export interface FindSimilarPatientsRequest {
 
 /**
  * Request to find similar patients (graph)
+ * Provide either patient_id (uses latest medical record) or
+ * medical_data_id (uses that specific record). If both provided,
+ * medical_data_id takes priority.
  */
 export interface FindSimilarPatientsGraphRequest {
-    patient_id: string;
+    patient_id?: string;
+    medical_data_id?: string;
     limit?: number; // 1-20, default 5
     treatment_filter?: string;
     min_similarity?: number; // 0.0-1.0, default 0.5

@@ -1,13 +1,22 @@
-/**
- * SearchFilters Component (Compact Design)
- * Compact, neat filter controls with fixed dropdown visibility
- */
-
 'use client';
+
+import { Button } from '@/src/components/shadcn/button';
+import { Input } from '@/src/components/shadcn/input';
+import { Label } from '@/src/components/shadcn/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/src/components/shadcn/select';
+import { User, List, Pill, SlidersHorizontal, RotateCw, Search, Loader2, ClipboardList } from 'lucide-react';
 
 interface SearchFiltersProps {
     patientId: string;
     onPatientIdChange: (value: string) => void;
+    medicalDataId: string;
+    onMedicalDataIdChange: (value: string) => void;
     limit: number;
     onLimitChange: (value: number) => void;
     treatmentFilter: string;
@@ -23,6 +32,8 @@ interface SearchFiltersProps {
 export function SearchFilters({
                                   patientId,
                                   onPatientIdChange,
+                                  medicalDataId,
+                                  onMedicalDataIdChange,
                                   limit,
                                   onLimitChange,
                                   treatmentFilter,
@@ -35,367 +46,136 @@ export function SearchFilters({
                                   disabled,
                               }: SearchFiltersProps) {
     const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !disabled) {
-            onSearch();
-        }
+        if (e.key === 'Enter' && !disabled) onSearch();
     };
 
     const treatments = [
-        'All Treatments',
-        'Metformin',
-        'GLP-1',
-        'SGLT-2',
-        'DPP-4',
-        'Insulin',
-        'Sulfonylureas',
-        'TZDs',
+        'All Treatments', 'Metformin', 'GLP-1', 'SGLT-2', 'DPP-4', 'Insulin', 'Sulfonylureas', 'TZDs',
     ];
 
     return (
-        <>
-            <div className="filters-container">
-                {/* Compact Grid Layout */}
-                <div className="filters-grid">
-                    {/* Patient ID Input */}
-                    <div className="filter-group">
-                        <label className="filter-label">
-                            <i className="fa-solid fa-user"></i>
-                            Patient ID
-                        </label>
-                        <input
-                            type="text"
-                            className="filter-input"
-                            placeholder="Enter ID..."
-                            value={patientId}
-                            onChange={(e) => onPatientIdChange(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                        />
-                    </div>
+        <div className="border border-primary/20 rounded-none p-4 mb-5">
+            {/* Row 1: Patient ID & Medical Data ID */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+                {/* Patient ID */}
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider flex items-center gap-1.5">
+                        <User className="h-2.5 w-2.5 opacity-70" />
+                        Patient ID
+                    </Label>
+                    <Input
+                        type="text"
+                        placeholder="Enter patient ID..."
+                        value={patientId}
+                        onChange={(e) => onPatientIdChange(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        disabled={!!medicalDataId.trim()}
+                        className="rounded-none h-9 border-primary/20 bg-transparent text-[12px] placeholder:text-muted-foreground/30 focus:border-primary/50 disabled:opacity-40"
+                    />
+                </div>
 
-                    {/* Results Limit */}
-                    <div className="filter-group">
-                        <label className="filter-label">
-                            <i className="fa-solid fa-list"></i>
-                            Results
-                        </label>
-                        <select
-                            className="filter-select"
-                            value={limit}
-                            onChange={(e) => onLimitChange(Number(e.target.value))}
-                        >
-                            <option value={5}>5 cases</option>
-                            <option value={10}>10 cases</option>
-                            <option value={15}>15 cases</option>
-                            <option value={20}>20 cases</option>
-                        </select>
-                    </div>
-
-                    {/* Treatment Filter */}
-                    <div className="filter-group">
-                        <label className="filter-label">
-                            <i className="fa-solid fa-pills"></i>
-                            Treatment
-                        </label>
-                        <select
-                            className="filter-select"
-                            value={treatmentFilter || 'All Treatments'}
-                            onChange={(e) => onTreatmentFilterChange(e.target.value === 'All Treatments' ? '' : e.target.value)}
-                        >
-                            {treatments.map((treatment) => (
-                                <option key={treatment} value={treatment}>
-                                    {treatment}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Similarity Slider - Spans 2 columns */}
-                    <div className="filter-group slider-group">
-                        <label className="filter-label">
-                            <i className="fa-solid fa-sliders"></i>
-                            Similarity
-                            <span className="similarity-value">{(minSimilarity * 100).toFixed(0)}%</span>
-                        </label>
-                        <input
-                            type="range"
-                            className="filter-slider"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            value={minSimilarity}
-                            onChange={(e) => onMinSimilarityChange(Number(e.target.value))}
-                        />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="filter-actions">
-                        <button
-                            className="filter-btn reset"
-                            onClick={onReset}
-                            disabled={isLoading}
-                            title="Reset filters"
-                        >
-                            <i className="fa-solid fa-rotate-right"></i>
-                        </button>
-                        <button
-                            className="filter-btn search"
-                            onClick={onSearch}
-                            disabled={disabled || isLoading}
-                        >
-                            {isLoading ? (
-                                <i className="fa-solid fa-spinner fa-spin"></i>
-                            ) : (
-                                <i className="fa-solid fa-magnifying-glass"></i>
-                            )}
-                            <span>Search</span>
-                        </button>
-                    </div>
+                {/* Medical Data ID */}
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider flex items-center gap-1.5">
+                        <ClipboardList className="h-2.5 w-2.5 opacity-70" />
+                        Medical Record ID
+                        <span className="text-muted-foreground/40 normal-case tracking-normal font-normal ml-1">(takes priority)</span>
+                    </Label>
+                    <Input
+                        type="text"
+                        placeholder="Enter medical record ID..."
+                        value={medicalDataId}
+                        onChange={(e) => onMedicalDataIdChange(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        className="rounded-none h-9 border-primary/20 bg-transparent text-[12px] placeholder:text-muted-foreground/30 focus:border-primary/50"
+                    />
                 </div>
             </div>
 
-            <style jsx>{`
-                .filters-container {
-                    background: transparent;
-                    border: 1px solid rgba(52, 211, 153, 0.2);
-                    border-radius: 10px;
-                    padding: 16px;
-                    margin-bottom: 20px;
-                }
+            {/* Row 2: Other filters & actions */}
+            <div className="grid grid-cols-[1fr_1.5fr_2fr_auto] gap-3 items-end">
+                {/* Results Limit */}
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider flex items-center gap-1.5">
+                        <List className="h-2.5 w-2.5 opacity-70" />
+                        Results
+                    </Label>
+                    <Select value={String(limit)} onValueChange={(v) => onLimitChange(Number(v))}>
+                        <SelectTrigger className="rounded-none h-9 border-primary/20 bg-transparent text-[12px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-white/10 bg-card">
+                            {[5, 10, 15, 20].map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n} cases</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                .filters-grid {
-                    display: grid;
-                    grid-template-columns: 2fr 1fr 1.5fr 2fr auto;
-                    gap: 12px;
-                    align-items: end;
-                }
+                {/* Treatment Filter */}
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider flex items-center gap-1.5">
+                        <Pill className="h-2.5 w-2.5 opacity-70" />
+                        Treatment
+                    </Label>
+                    <Select
+                        value={treatmentFilter || 'All Treatments'}
+                        onValueChange={(v) => onTreatmentFilterChange(v === 'All Treatments' ? '' : v)}
+                    >
+                        <SelectTrigger className="rounded-none h-9 border-primary/20 bg-transparent text-[12px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-white/10 bg-card">
+                            {treatments.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                .slider-group {
-                    grid-column: span 2;
-                }
+                {/* Similarity Slider */}
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider flex items-center gap-1.5">
+                        <SlidersHorizontal className="h-2.5 w-2.5 opacity-70" />
+                        Similarity
+                        <span className="text-primary font-bold ml-auto">{(minSimilarity * 100).toFixed(0)}%</span>
+                    </Label>
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={minSimilarity}
+                        onChange={(e) => onMinSimilarityChange(Number(e.target.value))}
+                        className="w-full h-[5px] rounded-none bg-primary/20 appearance-none cursor-pointer accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow-md"
+                    />
+                </div>
 
-                .filter-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                }
-
-                .filter-label {
-                    font-size: 11px;
-                    color: rgba(52, 211, 153, 0.8);
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.3px;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-
-                .filter-label i {
-                    font-size: 10px;
-                    opacity: 0.7;
-                }
-
-                .similarity-value {
-                    color: #34d399;
-                    font-weight: 700;
-                    margin-left: auto;
-                }
-
-                .filter-input {
-                    padding: 10px 12px;
-                    background: transparent;
-                    border: 1px solid rgba(52, 211, 153, 0.2);
-                    border-radius: 6px;
-                    color: #ffffff;
-                    font-size: 13px;
-                    outline: none;
-                    transition: all 0.2s ease;
-                }
-
-                .filter-input::placeholder {
-                    color: rgba(255, 255, 255, 0.3);
-                }
-
-                .filter-input:hover {
-                    border-color: rgba(52, 211, 153, 0.3);
-                }
-
-                .filter-input:focus {
-                    border-color: rgba(52, 211, 153, 0.5);
-                    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.1);
-                }
-
-                .filter-select {
-                    padding: 10px 32px 10px 12px;
-                    background: transparent;
-                    border: 1px solid rgba(52, 211, 153, 0.2);
-                    border-radius: 6px;
-                    color: #ffffff;
-                    font-size: 13px;
-                    cursor: pointer;
-                    outline: none;
-                    transition: all 0.2s ease;
-                    -webkit-appearance: none;
-                    -moz-appearance: none;
-                    appearance: none;
-                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2334d399' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-                    background-repeat: no-repeat;
-                    background-position: right 10px center;
-                }
-
-                .filter-select:hover {
-                    border-color: rgba(52, 211, 153, 0.3);
-                }
-
-                .filter-select:focus {
-                    border-color: rgba(52, 211, 153, 0.5);
-                }
-
-                .filter-select option {
-                    background: #0a1f1a;
-                    color: #ffffff;
-                    padding: 8px;
-                }
-
-                .filter-slider {
-                    width: 100%;
-                    height: 5px;
-                    border-radius: 3px;
-                    background: rgba(52, 211, 153, 0.2);
-                    outline: none;
-                    -webkit-appearance: none;
-                    appearance: none;
-                    cursor: pointer;
-                }
-
-                .filter-slider::-webkit-slider-thumb {
-                    -webkit-appearance: none;
-                    appearance: none;
-                    width: 16px;
-                    height: 16px;
-                    border-radius: 50%;
-                    background: #34d399;
-                    border: 2px solid #0a1f1a;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 6px rgba(52, 211, 153, 0.3);
-                }
-
-                .filter-slider::-webkit-slider-thumb:hover {
-                    background: #6ee7b7;
-                    transform: scale(1.15);
-                    box-shadow: 0 3px 8px rgba(52, 211, 153, 0.5);
-                }
-
-                .filter-slider::-moz-range-thumb {
-                    width: 16px;
-                    height: 16px;
-                    border-radius: 50%;
-                    background: #34d399;
-                    border: 2px solid #0a1f1a;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 6px rgba(52, 211, 153, 0.3);
-                }
-
-                .filter-slider::-moz-range-thumb:hover {
-                    background: #6ee7b7;
-                    transform: scale(1.15);
-                    box-shadow: 0 3px 8px rgba(52, 211, 153, 0.5);
-                }
-
-                .filter-actions {
-                    display: flex;
-                    gap: 8px;
-                    align-items: center;
-                }
-
-                .filter-btn {
-                    padding: 10px 16px;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    border: 1px solid;
-                    white-space: nowrap;
-                }
-
-                .filter-btn:disabled {
-                    opacity: 0.4;
-                    cursor: not-allowed;
-                }
-
-                .filter-btn.reset {
-                    background: transparent;
-                    border-color: rgba(255, 255, 255, 0.15);
-                    color: rgba(255, 255, 255, 0.7);
-                    padding: 10px;
-                }
-
-                .filter-btn.reset:hover:not(:disabled) {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.25);
-                    color: rgba(255, 255, 255, 0.9);
-                    transform: rotate(180deg);
-                }
-
-                .filter-btn.search {
-                    background: linear-gradient(135deg, #047857, #10b981);
-                    border-color: rgba(52, 211, 153, 0.3);
-                    color: white;
-                    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-                }
-
-                .filter-btn.search:hover:not(:disabled) {
-                    background: linear-gradient(135deg, #059669, #34d399);
-                    border-color: rgba(52, 211, 153, 0.5);
-                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                    transform: translateY(-1px);
-                }
-
-                .filter-btn.search:active:not(:disabled) {
-                    transform: translateY(0);
-                }
-
-                @media (max-width: 1200px) {
-                    .filters-grid {
-                        grid-template-columns: 1fr 1fr;
-                        gap: 12px;
-                    }
-
-                    .filter-group:first-child {
-                        grid-column: 1 / -1;
-                    }
-
-                    .filter-actions {
-                        grid-column: 1 / -1;
-                        justify-content: flex-end;
-                    }
-                }
-
-                @media (max-width: 768px) {
-                    .filters-container {
-                        padding: 12px;
-                    }
-
-                    .filters-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .filter-actions {
-                        width: 100%;
-                    }
-
-                    .filter-btn {
-                        flex: 1;
-                        justify-content: center;
-                    }
-                }
-            `}</style>
-        </>
+                {/* Actions */}
+                <div className="flex gap-2 items-center">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onReset}
+                        disabled={isLoading}
+                        className="h-9 w-9 rounded-none border border-white/15 bg-transparent text-muted-foreground/70 hover:bg-white/[0.05] hover:text-foreground disabled:opacity-40"
+                    >
+                        <RotateCw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        onClick={onSearch}
+                        disabled={disabled || isLoading}
+                        className="rounded-none h-9 px-4 bg-primary hover:bg-primary/80 text-primary-foreground text-[12px] font-semibold disabled:opacity-40"
+                    >
+                        {isLoading ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                            <Search className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Search
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }
