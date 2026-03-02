@@ -1,0 +1,12 @@
+:root {
+    --ribbon-duration-menu: 600ms;
+    --ribbon-duration-content: 500ms;
+    --ribbon-duration-toggle: 400ms;
+    --ribbon-duration-backdrop: 500ms;
+    --ribbon-easing: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Ensure tooltips appear above backdrop */
+[data-radix-popper-content-wrapper] {
+    z-index: 1003 !important;
+}
