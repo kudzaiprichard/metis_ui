@@ -7,20 +7,16 @@ import Cookies from 'js-cookie';
  * Custom Axios config interface with retry flags
  */
 interface CustomAxiosConfig extends InternalAxiosRequestConfig {
-    _retry?: boolean;           // Tracks if request has been retried
-    _skipAuthRetry?: boolean;   // Flag to skip automatic token refresh retry
+    _retry?: boolean;
+    _skipAuthRetry?: boolean;
 }
 
-// Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{
     resolve: (value?: unknown) => void;
     reject: (reason?: unknown) => void;
 }> = [];
 
-/**
- * Process queued requests after token refresh
- */
 const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue.forEach(prom => {
         if (error) {
@@ -33,9 +29,6 @@ const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue = [];
 };
 
-/**
- * Create axios instance with base configuration
- */
 const axiosInstance: AxiosInstance = axios.create({
     baseURL: getApiBaseUrl(),
     timeout: API_CONFIG.TIMEOUT,
@@ -44,12 +37,8 @@ const axiosInstance: AxiosInstance = axios.create({
     },
 });
 
-/**
- * Request interceptor - Add auth token to requests
- */
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Get access token from cookies
         const token = Cookies.get(COOKIE_NAMES.ACCESS_TOKEN);
 
         if (token) {
@@ -63,13 +52,24 @@ axiosInstance.interceptors.request.use(
     }
 );
 
-/**
- * Response interceptor - Handle backend ApiResponse format and errors
- */
 axiosInstance.interceptors.response.use(
     (response: AxiosResponse<ApiResponse<unknown>>) => {
-        // Check if backend returned success: false in a 200 response
+        // ===== DEBUG: Log every successful response =====
+        console.log('[API] Response received:', {
+            url: response.config.url,
+            method: response.config.method,
+            status: response.status,
+            data: response.data,
+        });
+
         if (response.data && response.data.success === false && response.data.error) {
+            // ===== DEBUG: Backend returned success:false in 200 =====
+            console.log('[API] Backend returned success:false in 200 response:', {
+                url: response.config.url,
+                error: response.data.error,
+                message: response.data.message,
+            });
+
             const apiError = new ApiError(response.data.error, response.data.message);
             return Promise.reject(apiError);
         }
@@ -79,31 +79,39 @@ axiosInstance.interceptors.response.use(
     async (error: AxiosError<ApiResponse<unknown>>) => {
         const originalRequest = error.config as CustomAxiosConfig;
 
-        // Check if response has backend ApiResponse format
+        // ===== DEBUG: Log every error response =====
+        console.log('[API] Error intercepted:', {
+            url: originalRequest?.url,
+            method: originalRequest?.method,
+            status: error.response?.status,
+            responseData: error.response?.data,
+            message: error.message,
+        });
+
         if (error.response?.data && typeof error.response.data === 'object') {
             const data = error.response.data;
 
-            // If backend returned structured error
             if (data.success === false && data.error) {
                 const apiError = new ApiError(data.error, data.message);
 
-                // ========== SAFEGUARD 1: Prevent infinite loop on refresh failures ==========
-                // If the refresh endpoint itself fails, don't try to refresh again
+                // ===== DEBUG: Structured backend error =====
+                console.log('[API] Structured backend error:', {
+                    url: originalRequest?.url,
+                    statusCode: apiError.statusCode,
+                    errorData: data.error,
+                    message: data.message,
+                });
+
                 if (originalRequest.url?.includes('/auth/refresh')) {
                     clearAuthAndRedirect();
                     return Promise.reject(apiError);
                 }
 
-                // ========== SAFEGUARD 2: Check for skip retry flag ==========
-                // Allow individual requests to opt-out of automatic token refresh
-                // This is used for auth endpoints where 401 is expected (wrong credentials)
                 if (originalRequest._skipAuthRetry) {
                     return Promise.reject(apiError);
                 }
 
-                // ========== Handle 401 on protected endpoints - Try to refresh token ==========
                 if (apiError.statusCode === HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry) {
-                    // If already refreshing, queue this request
                     if (isRefreshing) {
                         return new Promise((resolve, reject) => {
                             failedQueue.push({ resolve, reject });
@@ -119,7 +127,6 @@ axiosInstance.interceptors.response.use(
 
                     const refreshToken = Cookies.get(COOKIE_NAMES.REFRESH_TOKEN);
 
-                    // No refresh token available - clear auth and redirect
                     if (!refreshToken) {
                         isRefreshing = false;
                         processQueue(apiError, null);
@@ -128,7 +135,6 @@ axiosInstance.interceptors.response.use(
                     }
 
                     try {
-                        // Call refresh endpoint
                         const response = await axios.post<ApiResponse<{
                             tokens: {
                                 access_token: {
@@ -147,7 +153,6 @@ axiosInstance.interceptors.response.use(
                         if (response.data.success && response.data.value) {
                             const { access_token, refresh_token } = response.data.value.tokens;
 
-                            // Update cookies with new tokens
                             const accessExpiry = new Date(access_token.expires_at);
                             Cookies.set(COOKIE_NAMES.ACCESS_TOKEN, access_token.token, {
                                 expires: accessExpiry,
@@ -163,19 +168,16 @@ axiosInstance.interceptors.response.use(
                                 secure: process.env.NODE_ENV === 'production',
                             });
 
-                            // Update authorization header
                             originalRequest.headers.Authorization = `Bearer ${access_token.token}`;
 
                             isRefreshing = false;
                             processQueue(null, access_token.token);
 
-                            // Retry original request with new token
                             return axiosInstance(originalRequest);
                         } else {
                             throw new Error('Token refresh failed');
                         }
                     } catch (refreshError) {
-                        // Refresh failed - clear auth and redirect
                         isRefreshing = false;
                         processQueue(refreshError, null);
                         clearAuthAndRedirect();
@@ -187,8 +189,13 @@ axiosInstance.interceptors.response.use(
             }
         }
 
-        // Handle network errors (no response from server)
         if (!error.response) {
+            // ===== DEBUG: Network error (no response) =====
+            console.log('[API] Network error - no response received:', {
+                url: originalRequest?.url,
+                message: error.message,
+            });
+
             const networkError = new ApiError(
                 {
                     title: 'Network Error',
@@ -201,8 +208,15 @@ axiosInstance.interceptors.response.use(
             return Promise.reject(networkError);
         }
 
-        // Handle other HTTP errors without ApiResponse format
+        // ===== DEBUG: Unhandled HTTP error =====
         const statusCode = error.response?.status || 500;
+        console.log('[API] Unhandled HTTP error:', {
+            url: originalRequest?.url,
+            statusCode,
+            responseData: error.response?.data,
+            message: error.message,
+        });
+
         const genericError = new ApiError(
             {
                 title: 'Request Failed',
@@ -217,9 +231,6 @@ axiosInstance.interceptors.response.use(
     }
 );
 
-/**
- * Clear auth cookies and redirect to login
- */
 function clearAuthAndRedirect() {
     if (typeof window !== 'undefined') {
         Cookies.remove(COOKIE_NAMES.ACCESS_TOKEN);
@@ -228,23 +239,15 @@ function clearAuthAndRedirect() {
     }
 }
 
-/**
- * API Client with typed methods
- * Automatically unwraps ApiResponse<T> to return T
- */
 class ApiClient {
-    /**
-     * GET request - Returns the value from ApiResponse
-     */
     async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+        // ===== DEBUG: Log every GET call and what value is extracted =====
+        console.log('[ApiClient] GET', url);
         const response = await axiosInstance.get<ApiResponse<T>>(url, config);
+        console.log('[ApiClient] GET result value:', url, response.data.value);
         return response.data.value as T;
     }
 
-    /**
-     * GET paginated request - Returns items with pagination metadata
-     * Use this for endpoints that return PaginatedResponse
-     */
     async getPaginated<T>(url: string, config?: AxiosRequestConfig): Promise<{
         items: T[];
         pagination: {
@@ -254,7 +257,9 @@ class ApiClient {
             total_pages: number;
         };
     }> {
+        console.log('[ApiClient] GET paginated', url);
         const response = await axiosInstance.get<PaginatedResponse<T>>(url, config);
+        console.log('[ApiClient] GET paginated result:', url, response.data);
 
         return {
             items: response.data.value || [],
@@ -267,61 +272,51 @@ class ApiClient {
         };
     }
 
-    /**
-     * POST request - Returns the value from ApiResponse
-     */
     async post<T, D = unknown>(
         url: string,
         data?: D,
         config?: AxiosRequestConfig
     ): Promise<T> {
+        console.log('[ApiClient] POST', url, 'payload:', data);
         const response = await axiosInstance.post<ApiResponse<T>>(url, data, config);
+        console.log('[ApiClient] POST result value:', url, response.data.value);
         return response.data.value as T;
     }
 
-    /**
-     * PUT request - Returns the value from ApiResponse
-     */
     async put<T, D = unknown>(
         url: string,
         data?: D,
         config?: AxiosRequestConfig
     ): Promise<T> {
+        console.log('[ApiClient] PUT', url, 'payload:', data);
         const response = await axiosInstance.put<ApiResponse<T>>(url, data, config);
+        console.log('[ApiClient] PUT result value:', url, response.data.value);
         return response.data.value as T;
     }
 
-    /**
-     * PATCH request - Returns the value from ApiResponse
-     */
     async patch<T, D = unknown>(
         url: string,
         data?: D,
         config?: AxiosRequestConfig
     ): Promise<T> {
+        console.log('[ApiClient] PATCH', url, 'payload:', data);
         const response = await axiosInstance.patch<ApiResponse<T>>(url, data, config);
+        console.log('[ApiClient] PATCH result value:', url, response.data.value);
         return response.data.value as T;
     }
 
-    /**
-     * DELETE request - Returns the value from ApiResponse
-     */
     async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+        console.log('[ApiClient] DELETE', url);
         const response = await axiosInstance.delete<ApiResponse<T>>(url, config);
+        console.log('[ApiClient] DELETE result value:', url, response.data.value);
         return response.data.value as T;
     }
 
-    /**
-     * GET request - Returns full ApiResponse (useful when you need message or metadata)
-     */
     async getFullResponse<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
         const response = await axiosInstance.get<ApiResponse<T>>(url, config);
         return response.data;
     }
 
-    /**
-     * POST request - Returns full ApiResponse
-     */
     async postFullResponse<T, D = unknown>(
         url: string,
         data?: D,
@@ -331,16 +326,10 @@ class ApiClient {
         return response.data;
     }
 
-    /**
-     * Get raw axios instance for advanced use cases
-     */
     get instance(): AxiosInstance {
         return axiosInstance;
     }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient();
-
-// Export axios instance for direct access if needed
 export { axiosInstance };
