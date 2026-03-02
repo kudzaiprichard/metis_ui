@@ -1,9 +1,6 @@
-/**
- * TreatmentBadge Component
- * Displays treatment name with icon
- */
-
 'use client';
+
+import { Pill } from 'lucide-react';
 
 interface TreatmentBadgeProps {
     treatment: string;
@@ -11,72 +8,22 @@ interface TreatmentBadgeProps {
 }
 
 export function TreatmentBadge({ treatment, variant = 'default' }: TreatmentBadgeProps) {
-    const getVariantStyles = () => {
-        switch (variant) {
-            case 'large':
-                return {
-                    padding: '10px 16px',
-                    fontSize: '15px',
-                    iconSize: '16px',
-                    gap: '10px',
-                };
-            case 'compact':
-                return {
-                    padding: '4px 10px',
-                    fontSize: '11px',
-                    iconSize: '11px',
-                    gap: '6px',
-                };
-            default:
-                return {
-                    padding: '6px 12px',
-                    fontSize: '13px',
-                    iconSize: '13px',
-                    gap: '8px',
-                };
-        }
+    const styles = {
+        large: 'px-4 py-2.5 text-[15px] gap-2.5',
+        compact: 'px-2.5 py-1 text-[11px] gap-1.5',
+        default: 'px-3 py-1.5 text-[13px] gap-2',
     };
 
-    const styles = getVariantStyles();
+    const iconSize = {
+        large: 'h-4 w-4',
+        compact: 'h-3 w-3',
+        default: 'h-3.5 w-3.5',
+    };
 
     return (
-        <>
-            <div className="treatment-badge">
-                <i className="fa-solid fa-prescription-bottle-medical"></i>
-                <span className="treatment-name">{treatment}</span>
-            </div>
-
-            <style jsx>{`
-                .treatment-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: ${styles.gap};
-                    padding: ${styles.padding};
-                    background: rgba(16, 185, 129, 0.15);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    border-radius: 8px;
-                    font-size: ${styles.fontSize};
-                    font-weight: 600;
-                    color: #34d399;
-                    transition: all 0.2s ease;
-                }
-
-                .treatment-badge:hover {
-                    background: rgba(16, 185, 129, 0.2);
-                    border-color: rgba(16, 185, 129, 0.3);
-                }
-
-                .treatment-badge i {
-                    color: #34d399;
-                    font-size: ${styles.iconSize};
-                }
-
-                .treatment-name {
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-            `}</style>
-        </>
+        <div className={`inline-flex items-center rounded-none border bg-primary/15 border-primary/20 font-semibold text-primary hover:bg-primary/20 hover:border-primary/30 transition-colors ${styles[variant]}`}>
+            <Pill className={`${iconSize[variant]} text-primary`} />
+            <span className="truncate">{treatment}</span>
+        </div>
     );
 }
