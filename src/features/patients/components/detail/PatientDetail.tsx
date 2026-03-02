@@ -1,166 +1,62 @@
-/**
- * PatientDetail Component
- * Main container for patient detail page with tabs
- */
-
 'use client';
 
 import { useState } from 'react';
 import { usePatientDetail } from '../../hooks/usePatients';
 import { PatientHeader } from './PatientHeader';
-import { ContactInfoTab } from './tabs/ContactInfoTab';
-import { MedicalDataTab } from './tabs/MedicalDataTab';
-import { TimelineTab } from './tabs/TimelineTab';
+import { ContactInfoSection } from './sections/ContactInfoSection';
+import { MedicalRecordsList } from './sections/MedicalRecordsList';
+import { NewMedicalRecordModal } from './modals/NewMedicalRecordModal';
+import { Button } from '@/src/components/shadcn/button';
+import { Loader2, CircleAlert, Plus } from 'lucide-react';
 
 interface PatientDetailProps {
     patientId: string;
 }
 
-export type TabType = 'contact' | 'medical' | 'timeline';
-
 export function PatientDetail({ patientId }: PatientDetailProps) {
-    const [activeTab, setActiveTab] = useState<TabType>('contact');
+    const [isNewRecordModalOpen, setIsNewRecordModalOpen] = useState(false);
     const { data: patient, isLoading, error } = usePatientDetail(patientId);
-
-    const tabs: { id: TabType; label: string; icon: string }[] = [
-        { id: 'contact', label: 'Contact Information', icon: 'fa-user' },
-        { id: 'medical', label: 'Medical Data', icon: 'fa-notes-medical' },
-        { id: 'timeline', label: 'Timeline', icon: 'fa-clock-rotate-left' },
-    ];
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="loading-spinner">
-                    <i className="fa-solid fa-spinner fa-spin"></i>
-                    <span>Loading patient...</span>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                <span>Loading patient...</span>
             </div>
         );
     }
 
     if (error || !patient) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="error-message">
-                    <i className="fa-solid fa-circle-exclamation"></i>
-                    <span>Error loading patient details</span>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+                <CircleAlert className="h-7 w-7 text-red-500" />
+                <span>Error loading patient details</span>
             </div>
         );
     }
 
     return (
         <>
-            <div className="patient-detail-container">
+            <div className="flex flex-col gap-4 pb-24">
                 <PatientHeader patient={patient} />
-
-                <div className="tab-navigation">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            <i className={`fa-solid ${tab.icon}`}></i>
-                            <span>{tab.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                <div className="tab-content-container">
-                    {activeTab === 'contact' && <ContactInfoTab patient={patient} />}
-                    {activeTab === 'medical' && <MedicalDataTab patient={patient} />}
-                    {activeTab === 'timeline' && <TimelineTab patientId={patientId} />}
-                </div>
+                <ContactInfoSection patient={patient} />
+                <MedicalRecordsList patient={patient} />
             </div>
 
-            <style jsx>{`
-                .loading-spinner,
-                .error-message {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 12px;
-                    color: #ffffff;
-                    font-size: 16px;
-                }
+            {/* FAB */}
+            <Button
+                onClick={() => setIsNewRecordModalOpen(true)}
+                className="fixed bottom-8 right-8 w-14 h-14 rounded-none bg-primary hover:bg-primary/80 text-primary-foreground border border-primary/30 shadow-lg shadow-primary/30 z-50 p-0"
+                title="New Visit"
+            >
+                <Plus className="h-6 w-6" />
+            </Button>
 
-                .loading-spinner i,
-                .error-message i {
-                    font-size: 32px;
-                    color: #10b981;
-                }
-
-                .error-message i {
-                    color: #ef4444;
-                }
-
-                .patient-detail-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                }
-
-                .tab-navigation {
-                    display: flex;
-                    gap: 4px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    padding: 4px;
-                    margin-bottom: 20px;
-                }
-
-                .tab-btn {
-                    flex: 1;
-                    padding: 11px 20px;
-                    background: transparent;
-                    border: none;
-                    border-radius: 8px;
-                    color: rgba(255, 255, 255, 0.6);
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                }
-
-                .tab-btn:hover {
-                    color: rgba(255, 255, 255, 0.9);
-                    background: rgba(255, 255, 255, 0.04);
-                }
-
-                .tab-btn.active {
-                    background: rgba(16, 185, 129, 0.15);
-                    color: #34d399;
-                }
-
-                .tab-btn i {
-                    font-size: 13px;
-                }
-
-                .tab-content-container {
-                    margin-bottom: 100px;
-                }
-
-                @media (max-width: 768px) {
-                    .patient-detail-container {
-                        padding: 0;
-                    }
-
-                    .tab-navigation {
-                        flex-direction: column;
-                    }
-
-                    .tab-btn {
-                        justify-content: flex-start;
-                        padding: 12px 16px;
-                    }
-                }
-            `}</style>
+            <NewMedicalRecordModal
+                isOpen={isNewRecordModalOpen}
+                onClose={() => setIsNewRecordModalOpen(false)}
+                patientId={patientId}
+            />
         </>
     );
 }

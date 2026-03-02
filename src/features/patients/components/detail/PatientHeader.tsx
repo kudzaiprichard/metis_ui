@@ -1,19 +1,10 @@
-// src/features/patients/components/detail/PatientHeader.tsx
-
-/**
- * PatientHeader Component
- * Displays patient information header with avatar and quick stats
- */
-
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card } from '@/src/components/shadcn/card';
+import { Button } from '@/src/components/shadcn/button';
 import { PatientDetail } from '../../api/patients.types';
-import { BrainPulseLoader } from "@/src/features/patients/components/loader/BrainPulseLoader";
-import { useToast } from '@/src/components/shared/ui/toast';
-import { ApiError } from '@/src/lib/types';
-import { useGenerateRecommendation } from "@/src/features/recommendation/hooks/useRecommendations";
+import { ArrowLeft, Users, User, Droplet, Weight, FolderOpen, CalendarCheck } from 'lucide-react';
 
 interface PatientHeaderProps {
     patient: PatientDetail;
@@ -21,472 +12,87 @@ interface PatientHeaderProps {
 
 export function PatientHeader({ patient }: PatientHeaderProps) {
     const router = useRouter();
-    const { showToast } = useToast();
-    const generateRecommendation = useGenerateRecommendation();
 
-    // Get the latest medical record (first in the array, sorted most recent first)
-    const latestMedicalRecord = patient.medical_records.length > 0
-        ? patient.medical_records[0]
-        : null;
+    const latest = patient.medical_records.length > 0 ? patient.medical_records[0] : null;
 
-    const hasMedicalData = !!latestMedicalRecord;
+    const getInitials = () =>
+        `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
 
-    const getInitials = () => {
-        return `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
-    };
+    const formatDate = (d: string) =>
+        new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
-    const getAge = () => {
-        if (!latestMedicalRecord?.age) return 'N/A';
-        return latestMedicalRecord.age;
-    };
-
-    const getGender = () => {
-        if (!latestMedicalRecord?.gender) return 'N/A';
-        return latestMedicalRecord.gender;
-    };
-
-    const getHbA1c = () => {
-        if (!latestMedicalRecord?.hba1c_baseline) return 'N/A';
-        return latestMedicalRecord.hba1c_baseline;
-    };
-
-    const getBMI = () => {
-        if (!latestMedicalRecord?.bmi) return 'N/A';
-        return latestMedicalRecord.bmi;
-    };
-
-    const handleBack = () => {
-        router.push('/doctor/patients');
-    };
+    const handleBack = () => router.push('/doctor/patients');
 
     const handleFindSimilar = () => {
-        if (!hasMedicalData) {
-            showToast(
-                'Medical Data Required',
-                'Please add medical data for this patient before finding similar cases',
-                'error'
-            );
-            return;
-        }
-
+        if (!latest) return;
         router.push(`/doctor/similar-patients?patientId=${patient.id}`);
     };
 
-    const handlePredict = async () => {
-        if (!latestMedicalRecord) {
-            showToast(
-                'Medical Data Required',
-                'Please add medical data for this patient before generating predictions',
-                'error'
-            );
-            return;
-        }
-
-        generateRecommendation.mutate(
-            { medical_data_id: latestMedicalRecord.id },
-            {
-                onSuccess: (prediction) => {
-                    showToast(
-                        'Prediction Generated',
-                        `Successfully generated treatment recommendation for ${patient.first_name} ${patient.last_name}`,
-                        'success'
-                    );
-
-                    router.push(`/doctor/recommendations/${prediction.id}`);
-                },
-                onError: (error: ApiError) => {
-                    showToast(
-                        'Prediction Failed',
-                        error.getMessage() || 'Failed to generate prediction. Please try again.',
-                        'error'
-                    );
-                },
-            }
-        );
-    };
-
-    // Mock data for now - replace with actual data when available
-    const lastVisit = 'Jan 2, 2026';
-    const nextAppointment = 'Jan 15, 2026';
-    const status = 'Active';
+    const stats = [
+        { label: 'Age', value: latest?.age ?? 'N/A', unit: latest?.age ? 'yrs' : '', icon: User },
+        { label: 'Gender', value: latest?.gender ?? 'N/A', unit: '', icon: User },
+        { label: 'HbA1c', value: latest?.hba1c_baseline ?? 'N/A', unit: latest?.hba1c_baseline ? '%' : '', icon: Droplet },
+        { label: 'BMI', value: latest?.bmi ?? 'N/A', unit: '', icon: Weight },
+        { label: 'Records', value: patient.medical_records.length, unit: '', icon: FolderOpen },
+        { label: 'Last Visit', value: latest ? formatDate(latest.created_at) : 'None', unit: '', icon: CalendarCheck },
+    ];
 
     return (
-        <>
-            <BrainPulseLoader isLoading={generateRecommendation.isPending} />
-
-            <div className="patient-header-card">
-                <div className="header-top-row">
-                    <div className="patient-basic-info">
-                        <div className="patient-avatar">{getInitials()}</div>
-                        <div className="patient-details">
-                            <h1 className="patient-name">
-                                {patient.first_name} {patient.last_name}
-                            </h1>
-                            <p className="patient-id">ID: {patient.id.slice(0, 16)}...</p>
-                        </div>
+        <Card className="border-white/10 bg-card/30 backdrop-blur-sm rounded-none p-5">
+            {/* Top Row */}
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-none bg-primary/80 flex items-center justify-center text-primary-foreground font-semibold text-[17px] flex-shrink-0">
+                        {getInitials()}
                     </div>
-
-                    <div className="header-actions">
-                        <button className="action-btn back-btn" onClick={handleBack}>
-                            <i className="fa-solid fa-arrow-left"></i>
-                            <span>Back to Patients</span>
-                        </button>
-                        <button
-                            className="action-btn similar-btn"
-                            onClick={handleFindSimilar}
-                            disabled={!hasMedicalData}
-                        >
-                            <i className="fa-solid fa-users"></i>
-                            <span>Find Similar</span>
-                        </button>
-                        <button
-                            className="action-btn primary"
-                            onClick={handlePredict}
-                            disabled={generateRecommendation.isPending || !hasMedicalData}
-                        >
-                            {generateRecommendation.isPending ? (
-                                <>
-                                    <i className="fa-solid fa-spinner fa-spin"></i>
-                                    <span>Generating...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <i className="fa-solid fa-brain"></i>
-                                    <span>AI Predict</span>
-                                </>
-                            )}
-                        </button>
+                    <div className="flex flex-col gap-0.5">
+                        <h1 className="text-[18px] font-semibold text-foreground tracking-tight">
+                            {patient.first_name} {patient.last_name}
+                        </h1>
+                        <span className="text-[11px] text-muted-foreground/50 font-medium">
+                            ID: {patient.id.slice(0, 16)}...
+                        </span>
                     </div>
                 </div>
-
-                <div className="stats-grid">
-                    <div className="stat-group">
-                        <div className="stat-item">
-                            <i className="fa-solid fa-user stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">Age</span>
-                                <span className="stat-value">{getAge()}<span className="stat-unit">yrs</span></span>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <i className="fa-solid fa-venus-mars stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">Gender</span>
-                                <span className="stat-value">{getGender()}</span>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <i className="fa-solid fa-droplet stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">HbA1c</span>
-                                <span className="stat-value">{getHbA1c()}<span className="stat-unit">%</span></span>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <i className="fa-solid fa-weight-scale stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">BMI</span>
-                                <span className="stat-value">{getBMI()}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="stat-group">
-                        <div className="stat-item">
-                            <i className="fa-solid fa-calendar-check stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">Last Visit</span>
-                                <span className="stat-value">{lastVisit}</span>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <i className="fa-solid fa-calendar-days stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">Next Appointment</span>
-                                <span className="stat-value">{nextAppointment}</span>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <i className="fa-solid fa-circle-check stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">Status</span>
-                                <span className="stat-value status-active">{status}</span>
-                            </div>
-                        </div>
-
-                        <div className="stat-item">
-                            <i className="fa-solid fa-clock stat-icon"></i>
-                            <div className="stat-content">
-                                <span className="stat-label">Last Updated</span>
-                                <span className="stat-value">{formatDate(patient.updated_at)}</span>
-                            </div>
-                        </div>
-                    </div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleBack}
+                        className="rounded-none h-8 px-3.5 text-[12px] font-semibold border border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+                    >
+                        <ArrowLeft className="h-3 w-3 mr-1.5" />
+                        Back
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleFindSimilar}
+                        disabled={!latest}
+                        className="rounded-none h-8 px-3.5 text-[12px] font-semibold border border-purple-500/20 bg-purple-500/10 text-purple-400 hover:bg-purple-500/15 hover:text-purple-300 disabled:opacity-40"
+                    >
+                        <Users className="h-3 w-3 mr-1.5" />
+                        Find Similar
+                    </Button>
                 </div>
             </div>
 
-            <style jsx>{`
-                .patient-header-card {
-                    padding: 24px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    margin-bottom: 20px;
-                }
-
-                .header-top-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 24px;
-                    padding-bottom: 20px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .patient-basic-info {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                }
-
-                .patient-avatar {
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 10px;
-                    background: linear-gradient(135deg, #047857, #10b981);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: 600;
-                    font-size: 20px;
-                    flex-shrink: 0;
-                }
-
-                .patient-details {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                }
-
-                .patient-name {
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    letter-spacing: -0.3px;
-                    margin: 0;
-                }
-
-                .patient-id {
-                    font-size: 12px;
-                    color: rgba(255, 255, 255, 0.4);
-                    font-weight: 500;
-                    margin: 0;
-                }
-
-                .header-actions {
-                    display: flex;
-                    gap: 10px;
-                    flex-shrink: 0;
-                }
-
-                .action-btn {
-                    padding: 10px 18px;
-                    background: rgba(255, 255, 255, 0.06);
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    border-radius: 8px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 7px;
-                    white-space: nowrap;
-                }
-
-                .action-btn:hover:not(:disabled) {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-color: rgba(255, 255, 255, 0.18);
-                    color: #ffffff;
-                }
-
-                .action-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-
-                .action-btn.back-btn {
-                    background: rgba(255, 255, 255, 0.04);
-                    border-color: rgba(255, 255, 255, 0.1);
-                    color: rgba(255, 255, 255, 0.7);
-                }
-
-                .action-btn.back-btn:hover {
-                    background: rgba(255, 255, 255, 0.08);
-                    border-color: rgba(255, 255, 255, 0.15);
-                    color: rgba(255, 255, 255, 0.9);
-                }
-
-                .action-btn.similar-btn {
-                    background: rgba(139, 92, 246, 0.12);
-                    border-color: rgba(139, 92, 246, 0.2);
-                    color: #a78bfa;
-                }
-
-                .action-btn.similar-btn:hover:not(:disabled) {
-                    background: rgba(139, 92, 246, 0.18);
-                    border-color: rgba(139, 92, 246, 0.3);
-                    color: #c4b5fd;
-                }
-
-                .action-btn.primary {
-                    background: linear-gradient(135deg, #047857, #10b981);
-                    border-color: rgba(16, 185, 129, 0.3);
-                    color: #ffffff;
-                }
-
-                .action-btn.primary:hover:not(:disabled) {
-                    background: linear-gradient(135deg, #059669, #34d399);
-                }
-
-                .action-btn.primary:disabled {
-                    opacity: 0.5;
-                    background: linear-gradient(135deg, #047857, #10b981);
-                }
-
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 20px;
-                }
-
-                .stat-group {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 16px;
-                }
-
-                .stat-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 12px;
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                }
-
-                .stat-item:hover {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.1);
-                }
-
-                .stat-icon {
-                    font-size: 16px;
-                    color: #34d399;
-                    width: 20px;
-                    text-align: center;
-                    flex-shrink: 0;
-                }
-
-                .stat-content {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
-                    min-width: 0;
-                }
-
-                .stat-label {
-                    font-size: 10px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .stat-value {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-
-                .stat-unit {
-                    font-size: 11px;
-                    font-weight: 400;
-                    color: rgba(255, 255, 255, 0.6);
-                    margin-left: 2px;
-                }
-
-                .stat-value.status-active {
-                    color: #34d399;
-                }
-
-                @media (max-width: 1200px) {
-                    .stats-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-
-                @media (max-width: 768px) {
-                    .patient-header-card {
-                        padding: 16px;
-                    }
-
-                    .header-top-row {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 16px;
-                    }
-
-                    .patient-avatar {
-                        width: 48px;
-                        height: 48px;
-                        font-size: 18px;
-                    }
-
-                    .patient-name {
-                        font-size: 18px;
-                    }
-
-                    .header-actions {
-                        width: 100%;
-                        flex-direction: column;
-                    }
-
-                    .action-btn {
-                        width: 100%;
-                        justify-content: center;
-                    }
-
-                    .stats-grid {
-                        grid-template-columns: 1fr;
-                        gap: 16px;
-                    }
-
-                    .stat-group {
-                        grid-template-columns: 1fr;
-                        gap: 12px;
-                    }
-                }
-            `}</style>
-        </>
+            {/* Stats Strip */}
+            <div className="grid grid-cols-6 gap-2 pt-3.5 border-t border-white/5">
+                {stats.map((s) => (
+                    <div key={s.label} className="flex items-center gap-2 px-2.5 py-2 bg-white/[0.02] border border-white/5 rounded-none">
+                        <s.icon className="h-3 w-3 text-primary flex-shrink-0" />
+                        <div className="flex flex-col gap-px min-w-0">
+                            <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
+                                {s.label}
+                            </span>
+                            <span className="text-[12px] font-semibold text-foreground truncate">
+                                {s.value}{s.unit && <span className="text-[10px] font-normal text-muted-foreground ml-0.5">{s.unit}</span>}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </Card>
     );
 }
