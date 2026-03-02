@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { SystemLayout } from '@/src/components/layouts/SystemLayout';
+import { SystemLayout } from '@/src/components/layout';
 
 interface SystemLayoutWrapperProps {
     children: ReactNode;
