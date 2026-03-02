@@ -1,10 +1,3 @@
-// src/features/recommendations/components/detail/PredictionDetail.tsx
-
-/**
- * PredictionDetail Component
- * Main container for prediction detail page
- */
-
 'use client';
 
 import { useRecommendation } from '../../hooks/useRecommendations';
@@ -15,6 +8,7 @@ import { ExplanationSection } from './ExplanationSection';
 import { SafetyWarningsSection } from './SafetyWarningsSection';
 import { AlternativesSection } from './AlternativesSection';
 import { PredictionSkeleton } from '../shared/PredictionSkeleton';
+import { Loader2, CircleAlert } from 'lucide-react';
 
 interface PredictionDetailProps {
     predictionId: string;
@@ -25,7 +19,7 @@ export function PredictionDetail({ predictionId }: PredictionDetailProps) {
 
     if (isLoading) {
         return (
-            <div className="prediction-detail-container">
+            <div className="max-w-[1200px] mx-auto pb-24">
                 <PredictionSkeleton variant="detail" />
             </div>
         );
@@ -33,72 +27,33 @@ export function PredictionDetail({ predictionId }: PredictionDetailProps) {
 
     if (error || !prediction) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="error-message">
-                    <i className="fa-solid fa-circle-exclamation"></i>
-                    <span>Error loading prediction details</span>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+                <CircleAlert className="h-7 w-7 text-red-500" />
+                <span>Error loading prediction details</span>
             </div>
         );
     }
 
     return (
-        <>
-            <div className="prediction-detail-container">
-                {/* Header with patient info */}
-                <PredictionHeader prediction={prediction} />
+        <div className="max-w-[1200px] mx-auto pb-24">
+            <PredictionHeader prediction={prediction} />
+            <PredictionOverview prediction={prediction} />
 
-                {/* Main prediction overview */}
-                <PredictionOverview prediction={prediction} />
+            {prediction.q_values && prediction.q_values.length > 0 && (
+                <QValuesSection qValues={prediction.q_values} />
+            )}
 
-                {/* Q-Values for all treatments */}
-                {prediction.q_values && prediction.q_values.length > 0 && (
-                    <QValuesSection qValues={prediction.q_values} />
-                )}
+            {prediction.explanation && (
+                <ExplanationSection explanation={prediction.explanation} />
+            )}
 
-                {/* Explanation with SHAP features */}
-                {prediction.explanation && (
-                    <ExplanationSection explanation={prediction.explanation} />
-                )}
+            {prediction.explanation?.alternatives && prediction.explanation.alternatives.length > 0 && (
+                <AlternativesSection alternatives={prediction.explanation.alternatives} />
+            )}
 
-                {/* Alternative treatments */}
-                {prediction.explanation?.alternatives && prediction.explanation.alternatives.length > 0 && (
-                    <AlternativesSection alternatives={prediction.explanation.alternatives} />
-                )}
-
-                {/* Safety warnings */}
-                {prediction.safety_warnings && prediction.safety_warnings.length > 0 && (
-                    <SafetyWarningsSection warnings={prediction.safety_warnings} />
-                )}
-            </div>
-
-            <style jsx>{`
-                .prediction-detail-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding-bottom: 100px;
-                }
-
-                .error-message {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 12px;
-                    color: #ffffff;
-                    font-size: 16px;
-                }
-
-                .error-message i {
-                    font-size: 32px;
-                    color: #ef4444;
-                }
-
-                @media (max-width: 768px) {
-                    .prediction-detail-container {
-                        padding: 0;
-                    }
-                }
-            `}</style>
-        </>
+            {prediction.safety_warnings && prediction.safety_warnings.length > 0 && (
+                <SafetyWarningsSection warnings={prediction.safety_warnings} />
+            )}
+        </div>
     );
 }

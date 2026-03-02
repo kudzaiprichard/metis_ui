@@ -1,14 +1,14 @@
-// src/features/recommendations/components/detail/ExplanationSection.tsx
-
-/**
- * ExplanationSection Component
- * Displays SHAP features, clinical reasoning, and model explanation
- */
-
 'use client';
 
 import { useState } from 'react';
+import { Card } from '@/src/components/shadcn/card';
+import { Badge } from '@/src/components/shadcn/badge';
+import { Button } from '@/src/components/shadcn/button';
 import { PredictionExplanation } from '../../api/recommendations.types';
+import {
+    Lightbulb, Award, FileText, Flag, BarChart3, Brain,
+    ArrowUp, ArrowDown, Minus, Ruler, Quote, CheckCircle, XCircle, GitBranch,
+} from 'lucide-react';
 
 interface ExplanationSectionProps {
     explanation: PredictionExplanation;
@@ -17,525 +17,159 @@ interface ExplanationSectionProps {
 export function ExplanationSection({ explanation }: ExplanationSectionProps) {
     const [activeTab, setActiveTab] = useState<'features' | 'reasoning'>('features');
 
-    // Sort features by rank
     const sortedFeatures = [...explanation.features].sort((a, b) => a.rank - b.rank);
 
     const getFeatureImpact = (shapValue: string) => {
-        const value = parseFloat(shapValue);
-        if (value > 0) return { label: 'Positive', color: '#34d399', icon: 'fa-arrow-up' };
-        if (value < 0) return { label: 'Negative', color: '#ef4444', icon: 'fa-arrow-down' };
-        return { label: 'Neutral', color: '#94a3b8', icon: 'fa-minus' };
+        const v = parseFloat(shapValue);
+        if (v > 0) return { label: 'Positive', color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20', icon: ArrowUp };
+        if (v < 0) return { label: 'Negative', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20', icon: ArrowDown };
+        return { label: 'Neutral', color: 'text-slate-400', bg: 'bg-slate-400/10 border-slate-400/20', icon: Minus };
     };
 
-    const getConfidenceLevelColor = () => {
+    const getConfidenceColor = () => {
         const level = explanation.confidence_level.toLowerCase();
-        if (level === 'high') return '#34d399';
-        if (level === 'medium') return '#60a5fa';
-        return '#fbbf24';
+        if (level === 'high') return 'text-emerald-400 border-emerald-400/30';
+        if (level === 'medium') return 'text-blue-400 border-blue-400/30';
+        return 'text-amber-400 border-amber-400/30';
     };
 
     return (
-        <>
-            <div className="explanation-card">
-                <div className="section-header">
-                    <h2 className="section-title">
-                        <i className="fa-solid fa-lightbulb"></i>
-                        Clinical Explanation
-                    </h2>
-                    <div className="confidence-badge" style={{ borderColor: getConfidenceLevelColor() }}>
-                        <i className="fa-solid fa-certificate" style={{ color: getConfidenceLevelColor() }}></i>
-                        <span style={{ color: getConfidenceLevelColor() }}>
-                            {explanation.confidence_level} Confidence
-                        </span>
-                    </div>
+        <Card className="border-white/10 bg-card/30 backdrop-blur-sm rounded-none p-5 mb-5">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
+                <h2 className="text-[18px] font-semibold text-foreground flex items-center gap-2.5">
+                    <Lightbulb className="h-4.5 w-4.5 text-primary" />
+                    Clinical Explanation
+                </h2>
+                <Badge
+                    variant="secondary"
+                    className={`rounded-none text-[12px] font-semibold px-3 py-1 bg-white/5 border ${getConfidenceColor()}`}
+                >
+                    <Award className="h-3 w-3 mr-1.5" />
+                    {explanation.confidence_level} Confidence
+                </Badge>
+            </div>
+
+            {/* Summary */}
+            <div className="mb-5">
+                <div className="flex gap-3 p-4 bg-blue-400/[0.08] border border-blue-400/15 rounded-none mb-3">
+                    <FileText className="h-4.5 w-4.5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-[14px] text-foreground/90 leading-relaxed">{explanation.summary_text}</p>
                 </div>
+                <Badge
+                    variant="secondary"
+                    className="rounded-none text-[12px] font-semibold px-3 py-1 bg-amber-400/10 border border-amber-400/20 text-amber-400"
+                >
+                    <Flag className="h-3 w-3 mr-1.5" />
+                    Priority: {explanation.clinical_priority}
+                </Badge>
+            </div>
 
-                {/* Summary */}
-                <div className="summary-section">
-                    <div className="summary-box">
-                        <i className="fa-solid fa-file-medical"></i>
-                        <p>{explanation.summary_text}</p>
-                    </div>
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/10 rounded-none mb-5">
+                {([
+                    { key: 'features' as const, label: `Key Features (${sortedFeatures.length})`, icon: BarChart3 },
+                    { key: 'reasoning' as const, label: 'Clinical Reasoning', icon: Brain },
+                ]).map((tab) => (
+                    <Button
+                        key={tab.key}
+                        variant="ghost"
+                        className={`flex-1 rounded-none h-9 text-[13px] font-medium gap-2 ${
+                            activeTab === tab.key
+                                ? 'bg-primary/15 text-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]'
+                        }`}
+                        onClick={() => setActiveTab(tab.key)}
+                    >
+                        <tab.icon className="h-3.5 w-3.5" />
+                        {tab.label}
+                    </Button>
+                ))}
+            </div>
 
-                    <div className="priority-badge">
-                        <i className="fa-solid fa-flag"></i>
-                        <span>Priority: {explanation.clinical_priority}</span>
-                    </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="tabs-container">
-                    <div className="tabs-nav">
-                        <button
-                            className={`tab-btn ${activeTab === 'features' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('features')}
-                        >
-                            <i className="fa-solid fa-chart-bar"></i>
-                            <span>Key Features ({sortedFeatures.length})</span>
-                        </button>
-                        <button
-                            className={`tab-btn ${activeTab === 'reasoning' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('reasoning')}
-                        >
-                            <i className="fa-solid fa-brain"></i>
-                            <span>Clinical Reasoning</span>
-                        </button>
-                    </div>
-
-                    <div className="tabs-content">
-                        {/* Features Tab */}
-                        {activeTab === 'features' && (
-                            <div className="features-grid">
-                                {sortedFeatures.map((feature) => {
-                                    const impact = getFeatureImpact(feature.shap_value);
-
-                                    return (
-                                        <div key={feature.id} className="feature-card">
-                                            <div className="feature-header">
-                                                <div className="feature-rank">#{feature.rank}</div>
-                                                <div className="feature-name">{feature.feature_name}</div>
-                                                <div className="impact-badge" style={{
-                                                    background: `${impact.color}15`,
-                                                    borderColor: `${impact.color}30`,
-                                                    color: impact.color
-                                                }}>
-                                                    <i className={`fa-solid ${impact.icon}`}></i>
-                                                    {impact.label}
-                                                </div>
-                                            </div>
-
-                                            <div className="feature-values">
-                                                <div className="value-item">
-                                                    <span className="value-label">Patient Value</span>
-                                                    <span className="value-number">{parseFloat(feature.raw_value).toFixed(2)}</span>
-                                                </div>
-                                                <div className="value-item">
-                                                    <span className="value-label">SHAP Impact</span>
-                                                    <span className="value-number" style={{ color: impact.color }}>
-                                                        {parseFloat(feature.shap_value).toFixed(4)}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {feature.reference_range && (
-                                                <div className="reference-range">
-                                                    <i className="fa-solid fa-ruler"></i>
-                                                    <span>Reference: {feature.reference_range}</span>
-                                                </div>
-                                            )}
-
-                                            <div className="feature-interpretation">
-                                                <i className="fa-solid fa-quote-left"></i>
-                                                <p>{feature.interpretation}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {/* Reasoning Tab */}
-                        {activeTab === 'reasoning' && (
-                            <div className="reasoning-content">
-                                <div className="reasoning-box">
-                                    <h3>
-                                        <i className="fa-solid fa-check-circle"></i>
-                                        Why This Treatment?
-                                    </h3>
-                                    <p>{explanation.why_this_treatment}</p>
+            {/* Features Tab */}
+            {activeTab === 'features' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {sortedFeatures.map((feature) => {
+                        const impact = getFeatureImpact(feature.shap_value);
+                        return (
+                            <div key={feature.id} className="p-4 bg-white/[0.03] border border-white/[0.08] rounded-none hover:bg-white/[0.05] transition-colors">
+                                {/* Feature Header */}
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <Badge variant="secondary" className="rounded-none w-7 h-7 flex items-center justify-center text-[12px] font-bold p-0 bg-primary/15 border-primary/20 text-primary">
+                                        #{feature.rank}
+                                    </Badge>
+                                    <span className="text-[14px] font-semibold text-foreground flex-1">{feature.feature_name}</span>
+                                    <Badge variant="secondary" className={`rounded-none text-[10px] font-semibold px-2 py-0.5 border ${impact.bg} ${impact.color}`}>
+                                        <impact.icon className="h-2.5 w-2.5 mr-1" />
+                                        {impact.label}
+                                    </Badge>
                                 </div>
 
-                                <div className="reasoning-box">
-                                    <h3>
-                                        <i className="fa-solid fa-times-circle"></i>
-                                        Why Not Alternatives?
-                                    </h3>
-                                    <p>{explanation.why_not_alternatives}</p>
+                                {/* Values */}
+                                <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+                                    <div className="flex flex-col gap-1 p-2 bg-white/[0.02] rounded-none">
+                                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Patient Value</span>
+                                        <span className="text-[14px] font-bold text-foreground">{parseFloat(feature.raw_value).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 p-2 bg-white/[0.02] rounded-none">
+                                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">SHAP Impact</span>
+                                        <span className={`text-[14px] font-bold ${impact.color}`}>{parseFloat(feature.shap_value).toFixed(4)}</span>
+                                    </div>
                                 </div>
 
-                                {explanation.feature_interactions && (
-                                    <div className="reasoning-box">
-                                        <h3>
-                                            <i className="fa-solid fa-project-diagram"></i>
-                                            Feature Interactions
-                                        </h3>
-                                        <p>{explanation.feature_interactions}</p>
+                                {/* Reference Range */}
+                                {feature.reference_range && (
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-500/[0.08] border border-purple-500/15 rounded-none text-[11px] text-purple-400 mb-2.5">
+                                        <Ruler className="h-2.5 w-2.5" />
+                                        Reference: {feature.reference_range}
                                     </div>
                                 )}
 
-                                <div className="model-values">
-                                    <div className="model-value-item">
-                                        <span className="model-label">Base Value</span>
-                                        <span className="model-number">{parseFloat(explanation.base_value).toFixed(4)}</span>
-                                    </div>
-                                    <div className="model-value-item">
-                                        <span className="model-label">Prediction Value</span>
-                                        <span className="model-number">{parseFloat(explanation.prediction_value).toFixed(4)}</span>
-                                    </div>
+                                {/* Interpretation */}
+                                <div className="flex gap-2.5 p-2.5 bg-white/[0.02] border-l-[3px] border-l-primary rounded-none">
+                                    <Quote className="h-2.5 w-2.5 text-primary flex-shrink-0 mt-0.5" />
+                                    <p className="text-[12px] text-muted-foreground leading-relaxed">{feature.interpretation}</p>
                                 </div>
                             </div>
-                        )}
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Reasoning Tab */}
+            {activeTab === 'reasoning' && (
+                <div className="flex flex-col gap-4">
+                    {[
+                        { title: 'Why This Treatment?', text: explanation.why_this_treatment, icon: CheckCircle },
+                        { title: 'Why Not Alternatives?', text: explanation.why_not_alternatives, icon: XCircle },
+                        ...(explanation.feature_interactions
+                            ? [{ title: 'Feature Interactions', text: explanation.feature_interactions, icon: GitBranch }]
+                            : []),
+                    ].map((box) => (
+                        <div key={box.title} className="p-4 bg-white/[0.03] border border-white/[0.08] rounded-none">
+                            <h3 className="text-[14px] font-semibold text-foreground flex items-center gap-2 mb-2.5">
+                                <box.icon className="h-3.5 w-3.5 text-primary" />
+                                {box.title}
+                            </h3>
+                            <p className="text-[13px] text-muted-foreground leading-relaxed">{box.text}</p>
+                        </div>
+                    ))}
+
+                    {/* Model Values */}
+                    <div className="grid grid-cols-2 gap-3 p-4 bg-primary/[0.06] border border-primary/10 rounded-none">
+                        {[
+                            { label: 'Base Value', value: parseFloat(explanation.base_value).toFixed(4) },
+                            { label: 'Prediction Value', value: parseFloat(explanation.prediction_value).toFixed(4) },
+                        ].map((item) => (
+                            <div key={item.label} className="flex flex-col gap-1.5">
+                                <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">{item.label}</span>
+                                <span className="text-[16px] font-bold text-primary">{item.value}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </div>
-
-            <style jsx>{`
-                .explanation-card {
-                    padding: 24px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    margin-bottom: 20px;
-                }
-
-                .section-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 20px;
-                    flex-wrap: wrap;
-                    gap: 12px;
-                }
-
-                .section-title {
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin: 0;
-                }
-
-                .section-title i {
-                    color: #34d399;
-                    font-size: 18px;
-                }
-
-                .confidence-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    background: rgba(255, 255, 255, 0.05);
-                    border: 1px solid;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                }
-
-                .summary-section {
-                    margin-bottom: 24px;
-                }
-
-                .summary-box {
-                    display: flex;
-                    gap: 12px;
-                    padding: 16px;
-                    background: rgba(96, 165, 250, 0.08);
-                    border: 1px solid rgba(96, 165, 250, 0.15);
-                    border-radius: 8px;
-                    margin-bottom: 12px;
-                }
-
-                .summary-box i {
-                    color: #60a5fa;
-                    font-size: 18px;
-                    flex-shrink: 0;
-                    margin-top: 2px;
-                }
-
-                .summary-box p {
-                    font-size: 14px;
-                    color: rgba(255, 255, 255, 0.9);
-                    line-height: 1.6;
-                    margin: 0;
-                }
-
-                .priority-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    background: rgba(251, 191, 36, 0.12);
-                    border: 1px solid rgba(251, 191, 36, 0.2);
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    color: #fbbf24;
-                }
-
-                .priority-badge i {
-                    font-size: 12px;
-                }
-
-                .tabs-container {
-                    margin-top: 20px;
-                }
-
-                .tabs-nav {
-                    display: flex;
-                    gap: 4px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    padding: 4px;
-                    margin-bottom: 20px;
-                }
-
-                .tab-btn {
-                    flex: 1;
-                    padding: 11px 20px;
-                    background: transparent;
-                    border: none;
-                    border-radius: 8px;
-                    color: rgba(255, 255, 255, 0.6);
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                }
-
-                .tab-btn:hover {
-                    color: rgba(255, 255, 255, 0.9);
-                    background: rgba(255, 255, 255, 0.04);
-                }
-
-                .tab-btn.active {
-                    background: rgba(16, 185, 129, 0.15);
-                    color: #34d399;
-                }
-
-                .tabs-content {
-                    min-height: 200px;
-                }
-
-                .features-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                    gap: 16px;
-                }
-
-                .feature-card {
-                    padding: 16px;
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                }
-
-                .feature-card:hover {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.12);
-                }
-
-                .feature-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 12px;
-                }
-
-                .feature-rank {
-                    width: 28px;
-                    height: 28px;
-                    border-radius: 6px;
-                    background: rgba(16, 185, 129, 0.15);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: #34d399;
-                    flex-shrink: 0;
-                }
-
-                .feature-name {
-                    flex: 1;
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #ffffff;
-                }
-
-                .impact-badge {
-                    padding: 4px 8px;
-                    border: 1px solid;
-                    border-radius: 4px;
-                    font-size: 10px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-
-                .impact-badge i {
-                    font-size: 9px;
-                }
-
-                .feature-values {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 10px;
-                    margin-bottom: 10px;
-                }
-
-                .value-item {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                    padding: 8px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border-radius: 6px;
-                }
-
-                .value-label {
-                    font-size: 10px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .value-number {
-                    font-size: 14px;
-                    font-weight: 700;
-                    color: #ffffff;
-                }
-
-                .reference-range {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 10px;
-                    background: rgba(139, 92, 246, 0.08);
-                    border: 1px solid rgba(139, 92, 246, 0.15);
-                    border-radius: 6px;
-                    font-size: 11px;
-                    color: #a78bfa;
-                    margin-bottom: 10px;
-                }
-
-                .reference-range i {
-                    font-size: 10px;
-                }
-
-                .feature-interpretation {
-                    display: flex;
-                    gap: 10px;
-                    padding: 10px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border-left: 3px solid #34d399;
-                    border-radius: 4px;
-                }
-
-                .feature-interpretation i {
-                    color: #34d399;
-                    font-size: 10px;
-                    margin-top: 2px;
-                    flex-shrink: 0;
-                }
-
-                .feature-interpretation p {
-                    font-size: 12px;
-                    color: rgba(255, 255, 255, 0.7);
-                    line-height: 1.5;
-                    margin: 0;
-                }
-
-                .reasoning-content {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                }
-
-                .reasoning-box {
-                    padding: 16px;
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 8px;
-                }
-
-                .reasoning-box h3 {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin: 0 0 10px 0;
-                }
-
-                .reasoning-box h3 i {
-                    color: #34d399;
-                    font-size: 14px;
-                }
-
-                .reasoning-box p {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.7);
-                    line-height: 1.6;
-                    margin: 0;
-                }
-
-                .model-values {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 12px;
-                    padding: 16px;
-                    background: rgba(16, 185, 129, 0.06);
-                    border: 1px solid rgba(16, 185, 129, 0.12);
-                    border-radius: 8px;
-                }
-
-                .model-value-item {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                }
-
-                .model-label {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.6);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .model-number {
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #34d399;
-                }
-
-                @media (max-width: 768px) {
-                    .explanation-card {
-                        padding: 16px;
-                    }
-
-                    .features-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .tabs-nav {
-                        flex-direction: column;
-                    }
-
-                    .tab-btn {
-                        justify-content: flex-start;
-                    }
-
-                    .model-values {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            `}</style>
-        </>
+            )}
+        </Card>
     );
 }

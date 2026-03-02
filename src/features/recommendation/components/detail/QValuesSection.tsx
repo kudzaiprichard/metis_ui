@@ -1,236 +1,90 @@
-// src/features/recommendations/components/detail/QValuesSection.tsx
-
-/**
- * QValuesSection Component
- * Displays all treatment options ranked by Q-values
- */
-
 'use client';
 
+import { Card } from '@/src/components/shadcn/card';
+import { Badge } from '@/src/components/shadcn/badge';
 import { PredictionQValue } from '../../api/recommendations.types';
+import { Trophy, Pill } from 'lucide-react';
 
 interface QValuesSectionProps {
     qValues: PredictionQValue[];
 }
 
 export function QValuesSection({ qValues }: QValuesSectionProps) {
-    // Sort by rank
     const sortedQValues = [...qValues].sort((a, b) => a.rank - b.rank);
 
     const getBarWidth = (qValue: string) => {
         const values = qValues.map(q => parseFloat(q.q_value));
-        const maxValue = Math.max(...values);
-        const minValue = Math.min(...values);
-        const range = maxValue - minValue;
-
+        const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
+        const range = maxVal - minVal;
         if (range === 0) return 100;
-
-        const value = parseFloat(qValue);
-        return ((value - minValue) / range) * 100;
+        return ((parseFloat(qValue) - minVal) / range) * 100;
     };
 
-    const getRankBadgeColor = (rank: number) => {
-        if (rank === 1) return { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.2)', color: '#34d399' };
-        if (rank === 2) return { bg: 'rgba(96, 165, 250, 0.15)', border: 'rgba(96, 165, 250, 0.2)', color: '#60a5fa' };
-        if (rank === 3) return { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24' };
-        return { bg: 'rgba(255, 255, 255, 0.05)', border: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.6)' };
+    const getRankColor = (rank: number) => {
+        if (rank === 1) return 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400';
+        if (rank === 2) return 'bg-blue-400/15 border-blue-400/20 text-blue-400';
+        if (rank === 3) return 'bg-amber-400/15 border-amber-400/20 text-amber-400';
+        return 'bg-white/5 border-white/10 text-muted-foreground';
     };
 
     return (
-        <>
-            <div className="qvalues-card">
-                <div className="section-header">
-                    <h2 className="section-title">
-                        <i className="fa-solid fa-ranking-star"></i>
-                        Treatment Rankings (Q-Values)
-                    </h2>
-                    <p className="section-subtitle">
-                        All treatment options ranked by predicted effectiveness
-                    </p>
-                </div>
-
-                <div className="qvalues-list">
-                    {sortedQValues.map((qValue) => {
-                        const colors = getRankBadgeColor(qValue.rank);
-                        const barWidth = getBarWidth(qValue.q_value);
-
-                        return (
-                            <div key={qValue.id} className={`qvalue-item ${qValue.rank === 1 ? 'top-ranked' : ''}`}>
-                                <div className="qvalue-header">
-                                    <div className="rank-badge" style={{
-                                        background: colors.bg,
-                                        borderColor: colors.border,
-                                        color: colors.color
-                                    }}>
-                                        #{qValue.rank}
-                                    </div>
-
-                                    <div className="treatment-info">
-                                        <div className="treatment-name">
-                                            <i className="fa-solid fa-prescription-bottle-medical"></i>
-                                            {qValue.treatment}
-                                        </div>
-                                    </div>
-
-                                    <div className="qvalue-score">
-                                        {parseFloat(qValue.q_value).toFixed(4)}
-                                    </div>
-                                </div>
-
-                                <div className="qvalue-bar-container">
-                                    <div
-                                        className="qvalue-bar"
-                                        style={{ width: `${barWidth}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+        <Card className="border-white/10 bg-card/30 backdrop-blur-sm rounded-none p-5 mb-5">
+            <div className="mb-5">
+                <h2 className="text-[18px] font-semibold text-foreground flex items-center gap-2.5 mb-1.5">
+                    <Trophy className="h-4.5 w-4.5 text-primary" />
+                    Treatment Rankings (Q-Values)
+                </h2>
+                <p className="text-[13px] text-muted-foreground">
+                    All treatment options ranked by predicted effectiveness
+                </p>
             </div>
 
-            <style jsx>{`
-                .qvalues-card {
-                    padding: 24px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    margin-bottom: 20px;
-                }
+            <div className="flex flex-col gap-3">
+                {sortedQValues.map((qv) => {
+                    const barWidth = getBarWidth(qv.q_value);
+                    const isTop = qv.rank === 1;
 
-                .section-header {
-                    margin-bottom: 20px;
-                }
+                    return (
+                        <div
+                            key={qv.id}
+                            className={`p-4 rounded-none border transition-colors ${
+                                isTop
+                                    ? 'bg-primary/[0.06] border-primary/15 hover:bg-primary/[0.08]'
+                                    : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05]'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3 mb-2.5">
+                                <Badge
+                                    variant="secondary"
+                                    className={`rounded-none w-10 h-10 flex items-center justify-center text-[14px] font-bold border p-0 ${getRankColor(qv.rank)}`}
+                                >
+                                    #{qv.rank}
+                                </Badge>
 
-                .section-title {
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin: 0 0 6px 0;
-                }
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <Pill className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                    <span className="text-[15px] font-semibold text-foreground truncate">
+                                        {qv.treatment}
+                                    </span>
+                                </div>
 
-                .section-title i {
-                    color: #34d399;
-                    font-size: 18px;
-                }
+                                <span className="text-[16px] font-bold text-primary flex-shrink-0">
+                                    {parseFloat(qv.q_value).toFixed(4)}
+                                </span>
+                            </div>
 
-                .section-subtitle {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.5);
-                    margin: 0;
-                }
-
-                .qvalues-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .qvalue-item {
-                    padding: 16px;
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                }
-
-                .qvalue-item:hover {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.12);
-                }
-
-                .qvalue-item.top-ranked {
-                    background: rgba(16, 185, 129, 0.06);
-                    border-color: rgba(16, 185, 129, 0.15);
-                }
-
-                .qvalue-item.top-ranked:hover {
-                    background: rgba(16, 185, 129, 0.08);
-                    border-color: rgba(16, 185, 129, 0.2);
-                }
-
-                .qvalue-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    margin-bottom: 10px;
-                }
-
-                .rank-badge {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 8px;
-                    border: 1px solid;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 14px;
-                    font-weight: 700;
-                    flex-shrink: 0;
-                }
-
-                .treatment-info {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .treatment-name {
-                    font-size: 15px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-
-                .treatment-name i {
-                    color: #34d399;
-                    font-size: 14px;
-                }
-
-                .qvalue-score {
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #34d399;
-                    flex-shrink: 0;
-                }
-
-                .qvalue-bar-container {
-                    width: 100%;
-                    height: 6px;
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 3px;
-                    overflow: hidden;
-                }
-
-                .qvalue-bar {
-                    height: 100%;
-                    background: linear-gradient(90deg, #047857, #10b981, #34d399);
-                    border-radius: 3px;
-                    transition: width 0.5s ease;
-                }
-
-                @media (max-width: 768px) {
-                    .qvalues-card {
-                        padding: 16px;
-                    }
-
-                    .qvalue-header {
-                        flex-wrap: wrap;
-                    }
-
-                    .treatment-name {
-                        font-size: 14px;
-                    }
-
-                    .qvalue-score {
-                        font-size: 14px;
-                    }
-                }
-            `}</style>
-        </>
+                            {/* Bar */}
+                            <div className="w-full h-1.5 bg-white/5 rounded-none overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-400 rounded-none transition-all duration-500"
+                                    style={{ width: `${barWidth}%` }}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Card>
     );
 }

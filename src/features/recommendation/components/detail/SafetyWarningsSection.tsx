@@ -1,13 +1,12 @@
-// src/features/recommendations/components/detail/SafetyWarningsSection.tsx
-
-/**
- * SafetyWarningsSection Component
- * Displays safety warnings and concerns for the recommended treatment
- */
-
 'use client';
 
+import { Card } from '@/src/components/shadcn/card';
+import { Badge } from '@/src/components/shadcn/badge';
 import { SafetyWarning } from '../../api/recommendations.types';
+import {
+    ShieldAlert, AlertTriangle, CircleAlert, Info,
+    UserCheck, HandHeart, Lightbulb,
+} from 'lucide-react';
 
 interface SafetyWarningsSectionProps {
     warnings: SafetyWarning[];
@@ -16,276 +15,82 @@ interface SafetyWarningsSectionProps {
 export function SafetyWarningsSection({ warnings }: SafetyWarningsSectionProps) {
     const getSeverityConfig = (severity: string) => {
         const level = severity.toLowerCase();
-
         if (level === 'high' || level === 'critical') {
-            return {
-                bg: 'rgba(239, 68, 68, 0.08)',
-                border: 'rgba(239, 68, 68, 0.2)',
-                color: '#ef4444',
-                icon: 'fa-circle-exclamation'
-            };
+            return { bg: 'bg-red-500/[0.08]', border: 'border-red-500/20', color: 'text-red-500', icon: CircleAlert };
         }
-
         if (level === 'medium' || level === 'moderate') {
-            return {
-                bg: 'rgba(251, 191, 36, 0.08)',
-                border: 'rgba(251, 191, 36, 0.2)',
-                color: '#fbbf24',
-                icon: 'fa-triangle-exclamation'
-            };
+            return { bg: 'bg-amber-400/[0.08]', border: 'border-amber-400/20', color: 'text-amber-400', icon: AlertTriangle };
         }
-
-        return {
-            bg: 'rgba(96, 165, 250, 0.08)',
-            border: 'rgba(96, 165, 250, 0.2)',
-            color: '#60a5fa',
-            icon: 'fa-info-circle'
-        };
+        return { bg: 'bg-blue-400/[0.08]', border: 'border-blue-400/20', color: 'text-blue-400', icon: Info };
     };
 
-    // Sort by severity (high > medium > low)
     const sortedWarnings = [...warnings].sort((a, b) => {
-        const severityOrder = { high: 0, critical: 0, medium: 1, moderate: 1, low: 2, info: 2 };
-        const severityA = severityOrder[a.severity.toLowerCase() as keyof typeof severityOrder] ?? 2;
-        const severityB = severityOrder[b.severity.toLowerCase() as keyof typeof severityOrder] ?? 2;
-        return severityA - severityB;
+        const order: Record<string, number> = { high: 0, critical: 0, medium: 1, moderate: 1, low: 2, info: 2 };
+        return (order[a.severity.toLowerCase()] ?? 2) - (order[b.severity.toLowerCase()] ?? 2);
     });
 
     return (
-        <>
-            <div className="warnings-card">
-                <div className="section-header">
-                    <h2 className="section-title">
-                        <i className="fa-solid fa-shield-halved"></i>
-                        Safety Warnings & Considerations
-                    </h2>
-                    <div className="warnings-count">
-                        <i className="fa-solid fa-exclamation-triangle"></i>
-                        <span>{warnings.length} {warnings.length === 1 ? 'Warning' : 'Warnings'}</span>
-                    </div>
-                </div>
-
-                <div className="warnings-list">
-                    {sortedWarnings.map((warning) => {
-                        const config = getSeverityConfig(warning.severity);
-
-                        return (
-                            <div
-                                key={warning.id}
-                                className="warning-item"
-                                style={{
-                                    background: config.bg,
-                                    borderColor: config.border
-                                }}
-                            >
-                                <div className="warning-header">
-                                    <div
-                                        className="severity-badge"
-                                        style={{
-                                            background: config.bg,
-                                            borderColor: config.border,
-                                            color: config.color
-                                        }}
-                                    >
-                                        <i className={`fa-solid ${config.icon}`}></i>
-                                        <span>{warning.severity}</span>
-                                    </div>
-
-                                    <div className="concern-title" style={{ color: config.color }}>
-                                        {warning.concern}
-                                    </div>
-                                </div>
-
-                                <div className="warning-body">
-                                    <div className="warning-detail">
-                                        <div className="detail-label">
-                                            <i className="fa-solid fa-user-doctor"></i>
-                                            Patient Factor
-                                        </div>
-                                        <p className="detail-text">{warning.patient_factor}</p>
-                                    </div>
-
-                                    <div className="warning-detail">
-                                        <div className="detail-label">
-                                            <i className="fa-solid fa-hand-holding-medical"></i>
-                                            Mitigation Strategy
-                                        </div>
-                                        <p className="detail-text">{warning.mitigation}</p>
-                                    </div>
-
-                                    {warning.reason && (
-                                        <div className="warning-detail">
-                                            <div className="detail-label">
-                                                <i className="fa-solid fa-lightbulb"></i>
-                                                Clinical Reasoning
-                                            </div>
-                                            <p className="detail-text">{warning.reason}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+        <Card className="border-white/10 bg-card/30 backdrop-blur-sm rounded-none p-5 mb-5">
+            <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
+                <h2 className="text-[18px] font-semibold text-foreground flex items-center gap-2.5">
+                    <ShieldAlert className="h-4.5 w-4.5 text-amber-400" />
+                    Safety Warnings & Considerations
+                </h2>
+                <Badge
+                    variant="secondary"
+                    className="rounded-none text-[12px] font-semibold px-3 py-1 bg-amber-400/10 border border-amber-400/20 text-amber-400"
+                >
+                    <AlertTriangle className="h-3 w-3 mr-1.5" />
+                    {warnings.length} {warnings.length === 1 ? 'Warning' : 'Warnings'}
+                </Badge>
             </div>
 
-            <style jsx>{`
-                .warnings-card {
-                    padding: 24px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    margin-bottom: 20px;
-                }
+            <div className="flex flex-col gap-4">
+                {sortedWarnings.map((warning) => {
+                    const config = getSeverityConfig(warning.severity);
+                    const SeverityIcon = config.icon;
 
-                .section-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 20px;
-                    flex-wrap: wrap;
-                    gap: 12px;
-                }
+                    return (
+                        <div
+                            key={warning.id}
+                            className={`p-4.5 rounded-none border transition-colors hover:-translate-y-0.5 ${config.bg} ${config.border}`}
+                        >
+                            {/* Header */}
+                            <div className="flex items-center gap-3 mb-4 pb-3.5 border-b border-white/[0.08]">
+                                <Badge
+                                    variant="secondary"
+                                    className={`rounded-none text-[11px] font-bold uppercase tracking-wider px-3 py-1 border ${config.bg} ${config.border} ${config.color}`}
+                                >
+                                    <SeverityIcon className="h-3 w-3 mr-1.5" />
+                                    {warning.severity}
+                                </Badge>
+                                <span className={`text-[15px] font-semibold flex-1 ${config.color}`}>
+                                    {warning.concern}
+                                </span>
+                            </div>
 
-                .section-title {
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin: 0;
-                }
-
-                .section-title i {
-                    color: #fbbf24;
-                    font-size: 18px;
-                }
-
-                .warnings-count {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    background: rgba(251, 191, 36, 0.12);
-                    border: 1px solid rgba(251, 191, 36, 0.2);
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    color: #fbbf24;
-                }
-
-                .warnings-count i {
-                    font-size: 12px;
-                }
-
-                .warnings-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                }
-
-                .warning-item {
-                    padding: 18px;
-                    border: 1px solid;
-                    border-radius: 10px;
-                    transition: all 0.2s ease;
-                }
-
-                .warning-item:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                }
-
-                .warning-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    margin-bottom: 16px;
-                    padding-bottom: 14px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .severity-badge {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    border: 1px solid;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    flex-shrink: 0;
-                }
-
-                .severity-badge i {
-                    font-size: 12px;
-                }
-
-                .concern-title {
-                    font-size: 15px;
-                    font-weight: 600;
-                    flex: 1;
-                }
-
-                .warning-body {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 14px;
-                }
-
-                .warning-detail {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                }
-
-                .detail-label {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.6);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .detail-label i {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.5);
-                }
-
-                .detail-text {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.85);
-                    line-height: 1.6;
-                    margin: 0;
-                    padding-left: 17px;
-                }
-
-                @media (max-width: 768px) {
-                    .warnings-card {
-                        padding: 16px;
-                    }
-
-                    .warning-item {
-                        padding: 14px;
-                    }
-
-                    .warning-header {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 10px;
-                    }
-
-                    .concern-title {
-                        font-size: 14px;
-                    }
-                }
-            `}</style>
-        </>
+                            {/* Body */}
+                            <div className="flex flex-col gap-3.5">
+                                {[
+                                    { label: 'Patient Factor', text: warning.patient_factor, icon: UserCheck },
+                                    { label: 'Mitigation Strategy', text: warning.mitigation, icon: HandHeart },
+                                    ...(warning.reason ? [{ label: 'Clinical Reasoning', text: warning.reason, icon: Lightbulb }] : []),
+                                ].map((detail) => (
+                                    <div key={detail.label} className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                                            <detail.icon className="h-3 w-3 text-muted-foreground/60" />
+                                            {detail.label}
+                                        </div>
+                                        <p className="text-[13px] text-foreground/85 leading-relaxed pl-[18px]">
+                                            {detail.text}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Card>
     );
 }
