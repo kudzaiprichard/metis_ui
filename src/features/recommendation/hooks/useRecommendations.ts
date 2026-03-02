@@ -88,11 +88,10 @@ export const useGenerateRecommendation = () => {
             queryClient.invalidateQueries({ queryKey: recommendationsKeys.lists() });
             queryClient.setQueryData(recommendationsKeys.detail(prediction.id), prediction);
 
-            // Invalidate patient detail since medical records include predictions
             const patientId = prediction.patient.id;
             queryClient.invalidateQueries({ queryKey: patientsKeys.detail(patientId) });
             queryClient.invalidateQueries({ queryKey: patientsKeys.medicalRecords(patientId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalDataLatest(patientId) });
+            queryClient.invalidateQueries({ queryKey: patientsKeys.latestMedicalData(patientId) });
         },
         onError: (error: ApiError) => {
             console.error('Generate prediction failed:', error.getFullMessage());
