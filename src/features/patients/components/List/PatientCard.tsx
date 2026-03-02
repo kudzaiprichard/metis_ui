@@ -1,12 +1,16 @@
-/**
- * PatientCard Component
- * Grid view card for displaying patient information
- */
-
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/src/components/shadcn/card';
+import { Button } from '@/src/components/shadcn/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/src/components/shadcn/tooltip';
 import { Patient } from '../../api/patients.types';
+import { Eye, Trash2, Mail, Phone, Calendar } from 'lucide-react';
 
 interface PatientCardProps {
     patient: Patient;
@@ -16,21 +20,13 @@ interface PatientCardProps {
 export function PatientCard({ patient, onDelete }: PatientCardProps) {
     const router = useRouter();
 
-    const getInitials = () => {
-        return `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
-    };
+    const getInitials = () =>
+        `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
+    const formatDate = (d: string) =>
+        new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-    const handleViewDetails = () => {
-        router.push(`/doctor/patients/${patient.id}`);
-    };
+    const handleViewDetails = () => router.push(`/doctor/patients/${patient.id}`);
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -38,236 +34,74 @@ export function PatientCard({ patient, onDelete }: PatientCardProps) {
     };
 
     return (
-        <>
-            <div className="patient-card" onClick={handleViewDetails}>
-                <div className="card-header">
-                    <div className="patient-avatar">{getInitials()}</div>
-                    <div className="header-content">
-                        <div className="patient-name">
+        <Card
+            className="cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 border-white/10 bg-card/30 backdrop-blur-sm rounded-none overflow-hidden p-0"
+            onClick={handleViewDetails}
+        >
+            <CardContent className="p-4 flex flex-col gap-0">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-3.5 pb-3 border-b border-white/[0.06]">
+                    <div className="w-10 h-10 rounded-none bg-primary/80 flex items-center justify-center text-primary-foreground font-semibold text-[15px] flex-shrink-0">
+                        {getInitials()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-foreground truncate">
                             {patient.first_name} {patient.last_name}
-                        </div>
-                        <div className="patient-id">ID: {patient.id.slice(0, 8)}</div>
+                        </p>
+                        <p className="text-[11px] text-muted-foreground/50 font-medium">
+                            ID: {patient.id.slice(0, 8)}
+                        </p>
                     </div>
-                    <button className="delete-btn" onClick={handleDelete}>
-                        <i className="fa-solid fa-trash"></i>
-                    </button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-none border border-white/10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/30"
+                                    onClick={handleDelete}
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Delete</p></TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
 
-                <div className="card-body">
-                    <div className="info-grid">
-                        <div className="info-item">
-                            <i className="fa-solid fa-envelope icon"></i>
-                            <div className="info-content">
-                                <span className="info-label">Email</span>
-                                <span className="info-value">{patient.email || 'Not provided'}</span>
+                {/* Info Items */}
+                <div className="flex flex-col gap-2 mb-3">
+                    {[
+                        { icon: Mail, label: 'Email', value: patient.email || 'Not provided' },
+                        { icon: Phone, label: 'Mobile', value: patient.mobile_number || 'Not provided' },
+                        { icon: Calendar, label: 'Created', value: formatDate(patient.created_at) },
+                    ].map((item) => (
+                        <div key={item.label} className="flex items-start gap-2.5 p-2 bg-white/[0.02] rounded-none">
+                            <item.icon className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                            <div className="flex flex-col gap-px min-w-0 flex-1">
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                                    {item.label}
+                                </span>
+                                <span className="text-[13px] text-foreground/90 truncate">
+                                    {item.value}
+                                </span>
                             </div>
                         </div>
-
-                        <div className="info-item">
-                            <i className="fa-solid fa-phone icon"></i>
-                            <div className="info-content">
-                                <span className="info-label">Mobile</span>
-                                <span className="info-value">{patient.mobile_number || 'Not provided'}</span>
-                            </div>
-                        </div>
-
-                        <div className="info-item">
-                            <i className="fa-solid fa-calendar icon"></i>
-                            <div className="info-content">
-                                <span className="info-label">Created</span>
-                                <span className="info-value">{formatDate(patient.created_at)}</span>
-                            </div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
 
-                <div className="card-footer">
-                    <button className="view-btn" onClick={handleViewDetails}>
-                        <i className="fa-solid fa-eye"></i>
-                        <span>View Details</span>
-                    </button>
+                {/* Footer */}
+                <div className="pt-3 border-t border-white/[0.06]">
+                    <Button
+                        variant="ghost"
+                        className="w-full h-9 rounded-none text-[13px] font-semibold text-primary hover:text-primary bg-primary/10 hover:bg-primary/15 border border-primary/20"
+                        onClick={handleViewDetails}
+                    >
+                        <Eye className="h-3.5 w-3.5 mr-2" />
+                        View Details
+                    </Button>
                 </div>
-            </div>
-
-            <style jsx>{`
-                .patient-card {
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    padding: 16px;
-                    transition: all 0.2s ease;
-                    cursor: pointer;
-                }
-
-                .patient-card:hover {
-                    background: rgba(255, 255, 255, 0.06);
-                    border-color: rgba(255, 255, 255, 0.15);
-                }
-
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    margin-bottom: 14px;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .patient-avatar {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 8px;
-                    background: linear-gradient(135deg, #047857, #10b981);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: 600;
-                    font-size: 15px;
-                    flex-shrink: 0;
-                }
-
-                .header-content {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .patient-name {
-                    font-size: 15px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    margin-bottom: 2px;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-
-                .patient-id {
-                    font-size: 11px;
-                    color: rgba(255, 255, 255, 0.4);
-                    font-weight: 500;
-                }
-
-                .delete-btn {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 6px;
-                    background: transparent;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    color: rgba(255, 255, 255, 0.5);
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                    flex-shrink: 0;
-                }
-
-                .delete-btn:hover {
-                    background: rgba(239, 68, 68, 0.1);
-                    border-color: rgba(239, 68, 68, 0.3);
-                    color: #ef4444;
-                }
-
-                .card-body {
-                    margin-bottom: 12px;
-                }
-
-                .info-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                }
-
-                .info-item {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 10px;
-                    padding: 8px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border-radius: 6px;
-                }
-
-                .icon {
-                    width: 16px;
-                    height: 16px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: #34d399;
-                    font-size: 12px;
-                    margin-top: 2px;
-                    flex-shrink: 0;
-                }
-
-                .info-content {
-                    flex: 1;
-                    min-width: 0;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
-                }
-
-                .info-label {
-                    font-size: 10px;
-                    color: rgba(255, 255, 255, 0.5);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 600;
-                }
-
-                .info-value {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.9);
-                    font-weight: 400;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-
-                .card-footer {
-                    padding-top: 12px;
-                    border-top: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .view-btn {
-                    width: 100%;
-                    padding: 10px 16px;
-                    background: rgba(16, 185, 129, 0.12);
-                    border: 1px solid rgba(16, 185, 129, 0.2);
-                    border-radius: 7px;
-                    color: #34d399;
-                    font-size: 13px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                }
-
-                .view-btn:hover {
-                    background: rgba(16, 185, 129, 0.18);
-                    border-color: rgba(16, 185, 129, 0.3);
-                    color: #6ee7b7;
-                }
-
-                @media (max-width: 768px) {
-                    .patient-card {
-                        padding: 14px;
-                    }
-
-                    .patient-name {
-                        font-size: 14px;
-                    }
-
-                    .info-value {
-                        font-size: 12px;
-                    }
-                }
-            `}</style>
-        </>
+            </CardContent>
+        </Card>
     );
 }
