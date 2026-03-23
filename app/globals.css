@@ -26,6 +26,10 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -45,6 +49,24 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Compact type scale — `--text-md` fills the 14 px slot Tailwind v4
+     leaves between sm (12) and lg (16). Sweep `text-[Npx]` literals to
+     the nearest token. */
+  --text-xs: 10px;
+  --text-xs--line-height: 1.4;
+  --text-sm: 12px;
+  --text-sm--line-height: 1.45;
+  --text-base: 13px;
+  --text-base--line-height: 1.5;
+  --text-md: 14px;
+  --text-md--line-height: 1.5;
+  --text-lg: 16px;
+  --text-lg--line-height: 1.5;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 1.25;
 }
 
 :root {
@@ -58,14 +80,18 @@
   --popover: rgba(20, 45, 35, 0.5);
   --popover-foreground: #e0ede8;
   --primary: #10b981;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #052e22;
   --secondary: rgba(255, 255, 255, 0.05);
   --secondary-foreground: #e0ede8;
   --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #7daa96;
+  --muted-foreground: #9ec9b5;
   --accent: rgba(255, 255, 255, 0.08);
   --accent-foreground: #e0ede8;
   --destructive: #ef4444;
+  --info: #60a5fa;
+  --info-foreground: #0a1d33;
+  --warning: #f59e0b;
+  --warning-foreground: #1a1206;
   --border: rgba(255, 255, 255, 0.1);
   --input-border: rgba(255, 255, 255, 0.1);
   --input: rgba(15, 35, 28, 0.4);
@@ -97,14 +123,18 @@
   --popover: rgba(20, 45, 35, 0.5);
   --popover-foreground: #e0ede8;
   --primary: #10b981;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #052e22;
   --secondary: rgba(255, 255, 255, 0.05);
   --secondary-foreground: #e0ede8;
   --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #7daa96;
+  --muted-foreground: #9ec9b5;
   --accent: rgba(255, 255, 255, 0.08);
   --accent-foreground: #e0ede8;
   --destructive: #ef4444;
+  --info: #60a5fa;
+  --info-foreground: #0a1d33;
+  --warning: #f59e0b;
+  --warning-foreground: #1a1206;
   --border: rgba(255, 255, 255, 0.1);
   --input-border: rgba(255, 255, 255, 0.1);
   --input: rgba(15, 35, 28, 0.4);
@@ -176,6 +206,24 @@
     50% { transform: translate(-40px, -40px) scale(1.02); opacity: 0.7; }
   }
 
+  @keyframes collapsible-down {
+    from { height: 0; }
+    to { height: var(--radix-collapsible-content-height); }
+  }
+
+  @keyframes collapsible-up {
+    from { height: var(--radix-collapsible-content-height); }
+    to { height: 0; }
+  }
+
+  [data-slot="collapsible-content"][data-state="open"] {
+    animation: collapsible-down 200ms ease-out;
+  }
+
+  [data-slot="collapsible-content"][data-state="closed"] {
+    animation: collapsible-up 200ms ease-out;
+  }
+
   input[data-slot="input"] {
     border-color: var(--input-border) !important;
   }
@@ -212,4 +260,9 @@
   [data-sonner-toast] [data-title] {
     color: #ffffff !important;
   }
+}
+/* Graph View — slide-in inspector */
+@keyframes gv-inspector-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
 }

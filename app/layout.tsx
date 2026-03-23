@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/src/components/providers/Providers";
 import { ToastBridge } from "@/src/components/shared/ui/toast";
-import Script from "next/script";
+import { AnimatedBackdrop } from "@/src/components/shared/AnimatedBackdrop";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -26,22 +26,20 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
+        // Browser extensions (Dark Reader, Grammarly, password managers, etc.)
+        // routinely inject attributes onto <html> and <body>, which surface as
+        // hydration mismatches even when the React tree is consistent.
+        // `suppressHydrationWarning` only silences the warning at this single
+        // element, not its descendants.
         <html lang="en" suppressHydrationWarning>
-        <head>
-            {/* FontAwesome CDN */}
-            <link
-                rel="stylesheet"
-                href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-                integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
-            />
-        </head>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="orb orb1"></div>
-        <div className="orb orb2"></div>
-        <div className="orb orb3"></div>
-
+        <body
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+            suppressHydrationWarning
+        >
+        {/* System-wide animated backdrop: drifting molecular grid + spotlight.
+            Sits behind every page (z-0) via `fixed inset-0` so each route
+            inherits the same atmosphere. */}
+        <AnimatedBackdrop />
         <Providers>
             {/* Global ToastBridge - Automatically shows toasts queued during navigation */}
             <ToastBridge />
