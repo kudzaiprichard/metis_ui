@@ -46,3 +46,9 @@ next-env.d.ts
 *.swp
 *.swo
 *~
+
+# Claude / docs
+.docs/
+.claude/
+CLAUDE.md
+claude.md
