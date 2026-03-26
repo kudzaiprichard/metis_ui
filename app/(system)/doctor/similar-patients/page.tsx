@@ -1,18 +1,10 @@
-'use client';
+import type { Metadata } from 'next';
+import { SimilarPatientsContent } from './similar-patients-content';
 
-import { useSearchParams } from 'next/navigation';
-import { SimilarPatientsSearch } from "@/src/features/similar-patients/components/search/SimilarPatientsSearch";
+export const metadata: Metadata = {
+    title: 'Similar Patients | Metis',
+};
 
 export default function SimilarPatientsPage() {
-    const searchParams = useSearchParams();
-    const patientId = searchParams.get('patientId') || undefined;
-    const medicalDataId = searchParams.get('medicalDataId') || undefined;
-
-    return (
-        <SimilarPatientsSearch
-            defaultPatientId={patientId}
-            defaultMedicalDataId={medicalDataId}
-            autoSearch={!!(patientId || medicalDataId)}
-        />
-    );
+    return <SimilarPatientsContent />;
 }

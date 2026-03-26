@@ -1,17 +1,21 @@
-// app/doctor/similar-patients/[caseId]/page.tsx
-'use client';
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { SimilarPatientDetail } from '@/src/features/similar-patients/components/detail/SimilarPatientDetail';
+import { PageLoader } from '@/src/components/shared/ui/page-loader';
 
-import { use } from 'react';
-import { SimilarPatientDetail } from "@/src/features/similar-patients/components/detail/SimilarPatientDetail";
+export const metadata: Metadata = {
+    title: 'Similar Patient | Metis',
+};
 
 interface SimilarPatientDetailPageProps {
-    params: Promise<{
-        caseId: string;
-    }>;
+    params: Promise<{ caseId: string }>;
 }
 
-export default function SimilarPatientDetailPage({ params }: SimilarPatientDetailPageProps) {
-    const { caseId } = use(params);
-
-    return <SimilarPatientDetail caseId={caseId} />;
+export default async function SimilarPatientDetailPage({ params }: SimilarPatientDetailPageProps) {
+    const { caseId } = await params;
+    return (
+        <Suspense fallback={<PageLoader isLoading fullPage={false} loadingText="Loading case…" />}>
+            <SimilarPatientDetail caseId={caseId} />
+        </Suspense>
+    );
 }
