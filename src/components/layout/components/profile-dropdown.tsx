@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/src/components/shadcn/avatar";
 import { Button } from "@/src/components/shadcn/button";
 import {
@@ -11,21 +12,31 @@ import {
     DropdownMenuTrigger,
 } from "@/src/components/shadcn/dropdown-menu";
 import { cn } from "@/src/lib/utils/utils";
-import { LogOut } from "lucide-react";
+import { LogOut, UserCog } from "lucide-react";
 import { User, normalizeUserRole } from "@/src/features/auth/api/auth.types";
 
 interface ProfileDropdownProps {
     user: User;
     onLogout: () => void;
+    /**
+     * Called when the user picks a navigation/action item inside the
+     * dropdown (Profile, Logout — anything that routes away). The ribbon
+     * menu uses this to dismiss its backdrop on a confirmed action.
+     * Opening the dropdown alone does NOT call this — preview without
+     * commitment leaves the backdrop in place.
+     */
+    onItemSelect?: () => void;
 }
 
-export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
+export function ProfileDropdown({ user, onLogout, onItemSelect }: ProfileDropdownProps) {
+    const router = useRouter();
+
     const getInitials = (firstName: string, lastName: string) => {
         return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
     };
 
-    const userInitials = getInitials(user.first_name, user.last_name);
-    const userName = `${user.first_name} ${user.last_name}`;
+    const userInitials = getInitials(user.firstName, user.lastName);
+    const userName = `${user.firstName} ${user.lastName}`;
     const userRole = normalizeUserRole(user.role).replace('_', ' ');
 
     return (
@@ -34,6 +45,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
                 <Button
                     variant="outline"
                     size="icon"
+                    aria-label="Open profile menu"
                     className={cn(
                         "w-12 h-12 bg-card/30 border-border rounded-[10px]",
                         "backdrop-blur-[20px] hover:bg-white/8 hover:border-primary",
@@ -67,7 +79,22 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuItem
-                    onClick={onLogout}
+                    onClick={() => {
+                        onItemSelect?.();
+                        router.push('/profile');
+                    }}
+                    aria-label="Open profile settings"
+                    className="cursor-pointer hover:bg-white/8 focus:bg-white/8"
+                >
+                    <UserCog className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border" />
+                <DropdownMenuItem
+                    onClick={() => {
+                        onItemSelect?.();
+                        onLogout();
+                    }}
                     className="cursor-pointer hover:bg-white/8 focus:bg-white/8"
                 >
                     <LogOut className="mr-2 h-4 w-4" />

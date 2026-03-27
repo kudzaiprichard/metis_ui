@@ -11,9 +11,10 @@ interface RibbonMenuProps {
 
 export function RibbonMenu({ isExpanded, onToggle, children }: RibbonMenuProps) {
     return (
-        <div
+        <nav
+            aria-label="Primary navigation"
             className={cn(
-                "fixed top-0 left-6 w-[60px] bg-card/50 border border-t-0 border-border",
+                "fixed top-0 left-2 sm:left-6 w-[52px] sm:w-[60px] bg-card/50 border border-t-0 border-border",
                 "rounded-b-[10px] backdrop-blur-[20px] z-[1001]",
                 "shadow-[0_0_0_3px_rgba(99,102,241,0.2),0_4px_12px_rgba(0,0,0,0.2)] overflow-hidden",
                 isExpanded ? "h-auto max-h-[calc(100vh-2rem)]" : "h-[50px]"
@@ -39,6 +40,6 @@ export function RibbonMenu({ isExpanded, onToggle, children }: RibbonMenuProps) 
             >
                 {children}
             </div>
-        </div>
+        </nav>
     );
 }

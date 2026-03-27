@@ -8,17 +8,21 @@ interface TopActionsProps {
     user: User;
     isMenuExpanded?: boolean;
     onLogout: () => void;
+    /** Closes the ribbon menu (dismisses the backdrop) when invoked. */
+    onCloseRibbon?: () => void;
 }
 
 export function TopActions({
                                user,
                                isMenuExpanded = false,
                                onLogout,
+                               onCloseRibbon,
                            }: TopActionsProps) {
     return (
-        <div
+        <nav
+            aria-label="Account"
             className={cn(
-                "fixed top-6 right-6 flex items-center gap-3 z-[1001]",
+                "fixed top-2 right-2 sm:top-6 sm:right-6 flex items-center gap-3 z-[1001]",
                 isMenuExpanded
                     ? "opacity-100 pointer-events-auto translate-y-0"
                     : "opacity-0 pointer-events-none translate-y-[-8px]"
@@ -30,7 +34,8 @@ export function TopActions({
             <ProfileDropdown
                 user={user}
                 onLogout={onLogout}
+                onItemSelect={onCloseRibbon}
             />
-        </div>
+        </nav>
     );
 }
