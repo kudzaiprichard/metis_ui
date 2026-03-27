@@ -15,11 +15,16 @@ export function MenuToggle({ isExpanded, onClick }: MenuToggleProps) {
             size="icon"
             onClick={onClick}
             className={cn(
-                "w-[60px] h-[50px] rounded-none hover:bg-white/5",
-                isExpanded && "bg-primary hover:bg-primary"
+                // No corner radius — the ribbon container already handles
+                // rounded-b corners + the flush-top alignment. Square edges
+                // here let the toggle read as the ribbon's "header band"
+                // rather than a button floating on top of it.
+                "w-[52px] sm:w-[60px] h-[50px] rounded-none border-b border-border/60",
+                "hover:bg-white/[0.06]",
+                isExpanded && "bg-primary/15 hover:bg-primary/20 border-b-primary/40"
             )}
             style={{
-                transition: `background-color var(--ribbon-duration-toggle, 400ms) var(--ribbon-easing, cubic-bezier(0.16, 1, 0.3, 1))`
+                transition: `background-color var(--ribbon-duration-toggle, 400ms) var(--ribbon-easing, cubic-bezier(0.16, 1, 0.3, 1)), border-color var(--ribbon-duration-toggle, 400ms) var(--ribbon-easing, cubic-bezier(0.16, 1, 0.3, 1))`
             }}
             aria-label="Toggle menu"
             aria-expanded={isExpanded}
@@ -29,8 +34,8 @@ export function MenuToggle({ isExpanded, onClick }: MenuToggleProps) {
                     className={cn(
                         "block w-full h-0.5 rounded-sm",
                         isExpanded
-                            ? "bg-primary-foreground rotate-45 translate-y-[7px]"
-                            : "bg-foreground"
+                            ? "bg-primary rotate-45 translate-y-[7px]"
+                            : "bg-foreground/85"
                     )}
                     style={{
                         transition: `all var(--ribbon-duration-toggle, 400ms) var(--ribbon-easing, cubic-bezier(0.16, 1, 0.3, 1))`,
@@ -40,7 +45,7 @@ export function MenuToggle({ isExpanded, onClick }: MenuToggleProps) {
                 <span
                     className={cn(
                         "block w-full h-0.5 rounded-sm",
-                        isExpanded ? "opacity-0" : "bg-foreground"
+                        isExpanded ? "opacity-0" : "bg-foreground/85"
                     )}
                     style={{
                         transition: `all var(--ribbon-duration-toggle, 400ms) var(--ribbon-easing, cubic-bezier(0.16, 1, 0.3, 1))`,
@@ -51,8 +56,8 @@ export function MenuToggle({ isExpanded, onClick }: MenuToggleProps) {
                     className={cn(
                         "block w-full h-0.5 rounded-sm",
                         isExpanded
-                            ? "bg-primary-foreground -rotate-45 -translate-y-[7px]"
-                            : "bg-foreground"
+                            ? "bg-primary -rotate-45 -translate-y-[7px]"
+                            : "bg-foreground/85"
                     )}
                     style={{
                         transition: `all var(--ribbon-duration-toggle, 400ms) var(--ribbon-easing, cubic-bezier(0.16, 1, 0.3, 1))`,

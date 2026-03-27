@@ -11,11 +11,11 @@ interface NavSectionProps {
 
 export function NavSection({ children, className, isLast = false }: NavSectionProps) {
     return (
-        <div className={cn("py-1", className)}>
-            <ul className="list-none flex flex-col gap-[0.15rem] px-[0.375rem]">
+        <div className={cn("py-2", className)}>
+            <ul className="list-none flex flex-col gap-1.5 px-2">
                 {children}
             </ul>
-            {!isLast && <Separator className="mt-1 bg-border" />}
+            {!isLast && <Separator className="mt-2 bg-border/60" />}
         </div>
     );
 }
