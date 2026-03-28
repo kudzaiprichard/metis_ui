@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 
 export interface NavItem {
-    icon: string;
+    icon: ReactNode;
     label: string;
     href: string;
     color: string;

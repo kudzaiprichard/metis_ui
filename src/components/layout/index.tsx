@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import "./styles.css";
 import { RibbonMenu } from "./components/ribbon-menu";
@@ -13,37 +12,17 @@ import { useRibbonMenu } from "./hooks/use-ribbon-menu";
 import { doctorNavigation, mlEngineerNavigation } from "./config/navigation";
 import { SystemLayoutProps } from "./types";
 import { useAuth } from "@/src/features/auth/hooks/useAuth";
-import { normalizeUserRole, UserRole, User } from "@/src/features/auth/api/auth.types";
+import { normalizeUserRole, UserRole } from "@/src/features/auth/api/auth.types";
 import { authApi } from "@/src/features/auth/api/auth.api";
 import { clearAuthTokens } from "@/src/lib/utils/auth";
-import { ApiError } from "@/src/lib/types";
 import { toast } from "sonner";
 import { ScrollArea } from "@/src/components/shadcn/scroll-area";
+import { PageLoader } from "@/src/components/shared/ui/page-loader";
 
 export function SystemLayout({ children }: SystemLayoutProps) {
     const router = useRouter();
     const { user: authUser, isLoading: isAuthLoading } = useAuth();
     const { isExpanded, toggle, close } = useRibbonMenu();
-
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const userData = await authApi.getMe();
-                setUser(userData);
-            } catch (err) {
-                if (err instanceof ApiError) {
-                    console.error("Failed to fetch user:", err.message);
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchUser();
-    }, []);
 
     const handleNavItemClick = () => {
         close();
@@ -64,24 +43,17 @@ export function SystemLayout({ children }: SystemLayoutProps) {
         }
     };
 
-    if (isAuthLoading || isLoading) {
-        return (
-            <div className="min-h-screen text-foreground flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">Loading...</p>
-                </div>
-            </div>
-        );
+    if (isAuthLoading) {
+        return <PageLoader isLoading fullPage loadingText="Loading..." />;
     }
 
-    if (!authUser || !user) {
+    if (!authUser) {
         return null;
     }
 
     const normalizedRole = normalizeUserRole(authUser.role);
     const navigation =
-        normalizedRole === UserRole.ML_ENGINEER
+        normalizedRole === UserRole.ADMIN
             ? mlEngineerNavigation
             : doctorNavigation;
 
@@ -110,14 +82,16 @@ export function SystemLayout({ children }: SystemLayoutProps) {
             </RibbonMenu>
 
             <TopActions
-                user={user}
+                user={authUser}
                 isMenuExpanded={isExpanded}
                 onLogout={handleLogout}
+                onCloseRibbon={close}
             />
 
             <main className="relative z-[1] h-screen">
                 <ScrollArea className="h-full">
-                    <div className="px-8 py-6 max-w-[1500px] mx-auto">
+                    <div className="px-4 sm:px-8 lg:px-12 py-6 max-w-[1600px] mx-auto">
+                        <Breadcrumb />
                         {children}
                     </div>
                 </ScrollArea>
