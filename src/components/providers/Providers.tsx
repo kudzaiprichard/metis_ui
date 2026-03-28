@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/src/lib/query-client';
 import { ToastProvider } from '@/src/components/shared/ui/toast';
 import { AuthChecker } from './AuthChecker';
+import { AxeBoot } from './AxeBoot';
 import { SplashScreen, useSplashScreen } from '@/src/components/shared/ui/splash';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <QueryClientProvider client={queryClient}>
             <ToastProvider>
+                <AxeBoot />
                 <SplashScreen isLoading={isLoading} />
                 <AuthChecker />
                 {!isLoading && children}
