@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../api/auth.api';
-import {LoginRequest, RegisterRequest, AuthResponse, UserRole, normalizeUserRole} from '../api/auth.types';
+import {LoginRequest, AuthResponse, UserRole, normalizeUserRole, UpdateProfileRequest, User} from '../api/auth.types';
 import { setAuthTokens, clearAuthTokens, isAuthenticated } from '@/src/lib/utils/auth';
 import { ApiError } from '@/src/lib/types';
 import { queueToast } from '@/src/lib/utils/toast-bridge';
@@ -45,11 +45,7 @@ export const useLogin = () => {
         },
         onSuccess: (data: AuthResponse) => {
             // Store tokens in cookies
-            setAuthTokens(
-                data.tokens.access_token.token,
-                data.tokens.refresh_token.token,
-                data.tokens.access_token.expires_at
-            );
+            setAuthTokens(data.tokens.accessToken, data.tokens.refreshToken);
 
             // Cache user data
             queryClient.setQueryData(authKeys.me, data.user);
@@ -57,16 +53,16 @@ export const useLogin = () => {
             // Queue success toast for next page (ToastBridge will display it)
             queueToast(
                 'Welcome Back!',
-                `Welcome back, ${data.user.first_name}!`,
+                `Welcome back, ${data.user.firstName}!`,
                 'success'
             );
 
             // Determine landing page based on user role
             const normalizedRole = normalizeUserRole(data.user.role);
 
-            const landingRoute = normalizedRole === UserRole.ML_ENGINEER
-                ? '/ml-engineer/users'
-                : '/doctor/dashboard';
+            const landingRoute = normalizedRole === UserRole.ADMIN
+                ? '/ml-engineer/bandit-demo'
+                : '/doctor/patients';
 
             // Check for redirect parameter (e.g., from middleware)
             const redirectParam = new URLSearchParams(window.location.search).get('redirect');
@@ -77,7 +73,7 @@ export const useLogin = () => {
             if (redirectParam) {
                 // Check if redirect URL is allowed for this user's role
                 const isValidForRole =
-                    (normalizedRole === UserRole.ML_ENGINEER && redirectParam.startsWith('/ml-engineer')) ||
+                    (normalizedRole === UserRole.ADMIN && redirectParam.startsWith('/ml-engineer')) ||
                     (normalizedRole === UserRole.DOCTOR && redirectParam.startsWith('/doctor'));
 
                 // Only use redirect if it's valid for the user's role
@@ -100,39 +96,26 @@ export const useLogin = () => {
     });
 };
 
+// Self-registration is intentionally unsupported in this build — only an
+// administrator can create accounts via the admin user-management screen.
+// The original `useRegister` hook was removed along with the public
+// /register page; if account creation by a self-service flow ever returns,
+// reintroduce it here and re-add the corresponding API method + schema.
+
 /**
- * Hook to register new user
+ * Hook to update the current user's own profile (PATCH /auth/me — spec §2.8).
+ * Updates the auth.me cache on success so the shell reflects the change immediately.
  */
-export const useRegister = () => {
-    const router = useRouter();
+export const useUpdateMe = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: RegisterRequest) => authApi.register(data),
-        onSuccess: (data: AuthResponse) => {
-            // Store tokens in cookies
-            setAuthTokens(
-                data.tokens.access_token.token,
-                data.tokens.refresh_token.token,
-                data.tokens.access_token.expires_at
-            );
-
-            // Cache user data
-            queryClient.setQueryData(authKeys.me, data.user);
-
-            // Queue welcome toast for next page
-            queueToast(
-                'Account Created!',
-                `Welcome to the platform, ${data.user.first_name}!`,
-                'success'
-            );
-
-            // Redirect to dashboard
-            router.push('/dashboard');
+        mutationFn: (data: UpdateProfileRequest) => authApi.updateMe(data),
+        onSuccess: (user: User) => {
+            queryClient.setQueryData(authKeys.me, user);
         },
         onError: (error: ApiError) => {
-            console.error('Registration failed:', error.getFullMessage());
-            // Error handling in registration form (if you have one)
+            console.error('Profile update failed:', error.getFullMessage());
         },
     });
 };
