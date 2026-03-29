@@ -33,6 +33,9 @@ export function SplashScreen({ isLoading }: SplashScreenProps) {
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    /* Match the app's dark background so there is no white
+                       flash before globals.css is applied. */
+                    background: linear-gradient(135deg, #0a1210 0%, #0f1f1a 50%, #132a22 100%);
                 }
             `}</style>
         </>
