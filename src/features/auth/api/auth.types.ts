@@ -8,29 +8,27 @@
 // ============================================================================
 
 /**
- * User role enum - single source of truth for all role values
+ * User role enum — spec §2.1 defines exactly two roles.
  */
 export enum UserRole {
     DOCTOR = 'DOCTOR',
-    ML_ENGINEER = 'ML_ENGINEER'
+    ADMIN = 'ADMIN'
 }
 
 /**
- * Helper function to normalize role strings from backend to enum
- * Handles various formats: 'ml_engineer', 'ML_ENGINEER', 'doctor', 'DOCTOR'
+ * Normalize role strings from the wire to the enum.
  */
 export function normalizeUserRole(role: string): UserRole {
-    const normalized = role.toUpperCase().replace('-', '_').trim();
+    const normalized = role.toUpperCase().trim();
 
-    if (normalized === 'ML_ENGINEER' || normalized === 'MLENGINEER') {
-        return UserRole.ML_ENGINEER;
+    if (normalized === 'ADMIN') {
+        return UserRole.ADMIN;
     }
 
     if (normalized === 'DOCTOR' || normalized === 'DR') {
         return UserRole.DOCTOR;
     }
 
-    // Default fallback
     return UserRole.DOCTOR;
 }
 
@@ -39,21 +37,11 @@ export function normalizeUserRole(role: string): UserRole {
 // ============================================================================
 
 /**
- * Token information (matches backend TokenInfo)
- */
-export interface TokenInfo {
-    token: string;
-    token_type: string;
-    expires_at: string;
-    created_at: string;
-}
-
-/**
- * Tokens response structure
+ * Tokens response structure — spec §2.2 / §2.5: flat JWT strings.
  */
 export interface AuthTokens {
-    access_token: TokenInfo;
-    refresh_token: TokenInfo;
+    accessToken: string;
+    refreshToken: string;
 }
 
 // ============================================================================
@@ -61,16 +49,18 @@ export interface AuthTokens {
 // ============================================================================
 
 /**
- * User response (matches backend UserResponse)
+ * User response — matches backend UserResponse (spec §2.8).
  */
 export interface User {
     id: string;
     email: string;
-    first_name: string;
-    last_name: string;
-    role: string; // Raw role from backend
-    created_at: string;
-    updated_at: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    role: string; // "ADMIN" | "DOCTOR" on the wire; normalize via normalizeUserRole
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
 
 // ============================================================================
@@ -85,22 +75,32 @@ export interface LoginRequest {
     password: string;
 }
 
-/**
- * Register request (matches backend RegisterRequest)
- */
-export interface RegisterRequest {
-    email: string;
-    password: string;
-    first_name: string;
-    last_name: string;
-    role?: UserRole;
-}
+// `RegisterRequest` is intentionally absent — self-registration was removed
+// from the auth surface. Admin-created users go through `CreateUserRequest`
+// in `src/features/users/api/users.types.ts`.
 
 /**
  * Refresh token request (matches backend RefreshTokenRequest)
  */
 export interface RefreshTokenRequest {
     refresh_token: string;
+}
+
+/**
+ * Update-profile request — spec §2.8 PATCH /auth/me. All fields optional.
+ * Wire fields are snake_case (Pydantic serializes the Python model directly).
+ *
+ * `email`, `password`, and `current_password` are sent when the user edits
+ * their login credentials on the profile page. The backend rejects fields
+ * it does not recognise; the client surfaces those errors in a toast.
+ */
+export interface UpdateProfileRequest {
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    email?: string;
+    password?: string;
+    current_password?: string;
 }
 
 /**
@@ -124,8 +124,6 @@ export interface AuthResponse {
 }
 
 /**
- * Refresh token response
+ * Refresh token response — spec §2.5: `value` is the flat token pair, no `tokens` wrapper.
  */
-export interface RefreshTokenResponse {
-    tokens: AuthTokens;
-}
+export type RefreshTokenResponse = AuthTokens;

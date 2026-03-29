@@ -7,11 +7,11 @@ import { apiClient } from '@/src/lib/api-client';
 import { API_ROUTES } from '@/src/lib/constants';
 import {
     LoginRequest,
-    RegisterRequest,
     AuthResponse,
     User,
     RefreshTokenRequest,
     RefreshTokenResponse,
+    UpdateProfileRequest,
 } from './auth.types';
 
 /**
@@ -28,23 +28,13 @@ export const authApi = {
         return apiClient.post<AuthResponse, LoginRequest>(
             API_ROUTES.AUTH.LOGIN,
             credentials,
-            { _skipAuthRetry: true } as any  // Skip auto-retry for login endpoint
+            { _skipAuthRetry: true }  // Skip auto-retry for login endpoint
         );
     },
 
-    /**
-     * Register new user
-     * POST /auth/register
-     * Note: _skipAuthRetry flag prevents automatic token refresh on 401
-     * (401 here means validation error, not expired token)
-     */
-    register: (data: RegisterRequest): Promise<AuthResponse> => {
-        return apiClient.post<AuthResponse, RegisterRequest>(
-            API_ROUTES.AUTH.REGISTER,
-            data,
-            { _skipAuthRetry: true } as any  // Skip auto-retry for register endpoint
-        );
-    },
+    // `register` is intentionally absent — self-registration was removed.
+    // Account creation lives behind the admin user-management screen
+    // (`useCreateUser` in src/features/users), which calls POST /users.
 
     /**
      * Logout user
@@ -60,6 +50,14 @@ export const authApi = {
      */
     getMe: (): Promise<User> => {
         return apiClient.get<User>(API_ROUTES.AUTH.ME);
+    },
+
+    /**
+     * Update current authenticated user's profile
+     * PATCH /auth/me — spec §2.8
+     */
+    updateMe: (data: UpdateProfileRequest): Promise<User> => {
+        return apiClient.patch<User, UpdateProfileRequest>(API_ROUTES.AUTH.ME, data);
     },
 
     /**
