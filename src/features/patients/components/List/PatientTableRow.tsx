@@ -21,7 +21,7 @@ export function PatientTableRow({ patient, onDelete }: PatientTableRowProps) {
     const router = useRouter();
 
     const getInitials = () =>
-        `${patient.first_name.charAt(0)}${patient.last_name.charAt(0)}`.toUpperCase();
+        `${patient.firstName?.charAt(0) ?? ''}${patient.lastName?.charAt(0) ?? ''}`.toUpperCase();
 
     const formatDate = (d: string) =>
         new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -41,33 +41,40 @@ export function PatientTableRow({ patient, onDelete }: PatientTableRowProps) {
             {/* Patient */}
             <TableCell>
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-none bg-white/[0.08] border border-white/10 flex items-center justify-center text-[13px] font-semibold text-foreground flex-shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-white/[0.08] border border-white/10 flex items-center justify-center text-base font-semibold text-foreground flex-shrink-0">
                         {getInitials()}
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[13px] font-semibold text-foreground truncate">
-                            {patient.first_name} {patient.last_name}
+                        <p className="text-base font-semibold text-foreground truncate">
+                            {patient.firstName} {patient.lastName}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                             ID: {patient.id.slice(0, 8)}
                         </p>
                     </div>
                 </div>
             </TableCell>
 
+            {/* Gender */}
+            <TableCell className="text-sm">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-xs font-medium text-muted-foreground capitalize">
+                    {patient.gender || '—'}
+                </span>
+            </TableCell>
+
             {/* Email */}
-            <TableCell className="text-[13px] text-muted-foreground truncate max-w-[200px]">
+            <TableCell className="text-base text-muted-foreground truncate max-w-[200px]">
                 {patient.email || 'Not provided'}
             </TableCell>
 
             {/* Mobile */}
-            <TableCell className="text-[13px] text-muted-foreground">
-                {patient.mobile_number || 'Not provided'}
+            <TableCell className="text-base text-muted-foreground">
+                {patient.phone || 'Not provided'}
             </TableCell>
 
             {/* Created */}
-            <TableCell className="text-[12px] text-muted-foreground whitespace-nowrap">
-                {formatDate(patient.created_at)}
+            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                {formatDate(patient.createdAt)}
             </TableCell>
 
             {/* Actions */}
@@ -79,7 +86,7 @@ export function PatientTableRow({ patient, onDelete }: PatientTableRowProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 rounded-none"
+                                    className="h-7 w-7 rounded-lg"
                                     onClick={handleView}
                                 >
                                     <Eye className="h-3.5 w-3.5" />
@@ -92,7 +99,7 @@ export function PatientTableRow({ patient, onDelete }: PatientTableRowProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 rounded-none text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    className="h-7 w-7 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={handleDelete}
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />

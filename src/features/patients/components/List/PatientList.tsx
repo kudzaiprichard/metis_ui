@@ -1,9 +1,21 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ArrowDownUp,
+    CircleAlert,
+    Download,
+    Filter,
+    Loader2,
+    Plus,
+    Search,
+    UserX,
+    Users,
+    X,
+} from 'lucide-react';
+
 import { Button } from '@/src/components/shadcn/button';
 import { Input } from '@/src/components/shadcn/input';
-import { Badge } from '@/src/components/shadcn/badge';
 import {
     Select,
     SelectContent,
@@ -21,55 +33,60 @@ import {
 import {
     Pagination,
     PaginationContent,
+    PaginationEllipsis,
     PaginationItem,
     PaginationLink,
     PaginationNext,
     PaginationPrevious,
-    PaginationEllipsis,
 } from '@/src/components/shadcn/pagination';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/src/components/shadcn/tooltip';
+import { useToast } from '@/src/components/shared/ui/toast';
+
+import { patientsApi } from '../../api/patients.api';
+import { Patient } from '../../api/patients.types';
 import { usePatients } from '../../hooks/usePatients';
-import { PatientCard } from './PatientCard';
-import { PatientTableRow } from './PatientTableRow';
+import {
+    buildPatientsCsv,
+    buildPatientsExportFilename,
+    downloadCsv,
+} from '../../lib/export-csv';
 import { CreatePatientModal } from './modals/CreatePatientModal';
 import { DeletePatientDialog } from './DeletePatientDialog';
-import { Patient } from '../../api/patients.types';
-import {
-    Users,
-    Plus,
-    Download,
-    Search,
-    X,
-    LayoutGrid,
-    Table2,
-    Loader2,
-    CircleAlert,
-    UserX,
-} from 'lucide-react';
+import { PatientTableRow } from './PatientTableRow';
 
-type ViewMode = 'grid' | 'table';
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 30, 50] as const;
+const DEFAULT_PAGE_SIZE = 20;
+
+type GenderFilter = 'all' | 'male' | 'female' | 'other';
+type ContactFilter =
+    | 'all'
+    | 'with-email'
+    | 'without-email'
+    | 'with-phone'
+    | 'without-phone';
+type SortMode = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
 export function PatientList() {
+    const { showToast } = useToast();
+
+    // Server-side pagination state
     const [page, setPage] = useState(1);
-    const [perPage, setPerPage] = useState(20);
+    const [perPage, setPerPage] = useState<number>(DEFAULT_PAGE_SIZE);
+
+    // Client-side filters (apply against the loaded page — the backend
+    // doesn't accept search/filter params per spec §5).
     const [searchInput, setSearchInput] = useState('');
     const [activeSearch, setActiveSearch] = useState('');
-    const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
+    const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
+    const [sort, setSort] = useState<SortMode>('newest');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
-    const { data, isLoading, error } = usePatients({
-        page,
-        per_page: perPage,
-        search: activeSearch || undefined,
-    });
+    const [isExporting, setIsExporting] = useState(false);
+
+    const { data, isLoading, error } = usePatients({ page, pageSize: perPage });
 
     const handleDeletePatient = (patient: Patient) => {
         setPatientToDelete(patient);
@@ -77,8 +94,7 @@ export function PatientList() {
     };
 
     const handleSearchClick = () => {
-        setActiveSearch(searchInput);
-        setPage(1);
+        setActiveSearch(searchInput.trim());
     };
 
     const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -88,24 +104,77 @@ export function PatientList() {
     const handleClearSearch = () => {
         setSearchInput('');
         setActiveSearch('');
-        setPage(1);
     };
 
-    const handleItemsPerPageChange = (value: string) => {
+    const handlePageSizeChange = (value: string) => {
         setPerPage(Number(value));
         setPage(1);
     };
 
-    const sortedPatients = data?.patients
-        ? [...data.patients].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        : [];
+    const handleResetFilters = () => {
+        setActiveSearch('');
+        setSearchInput('');
+        setGenderFilter('all');
+        setContactFilter('all');
+        setSort('newest');
+    };
 
-    const totalPatients = data?.pagination?.total || 0;
-    const totalPages = data?.pagination?.total_pages || 1;
-    const startIndex = ((page - 1) * perPage) + 1;
+    /**
+     * Filter + sort the loaded page client-side. The API only supports
+     * pagination, so search / gender / contact filters are applied locally
+     * to whatever the current page returned.
+     */
+    const visiblePatients = useMemo(() => {
+        const list = data?.patients ? [...data.patients] : [];
+        const q = activeSearch.toLowerCase();
+
+        const filtered = list.filter((p) => {
+            if (genderFilter !== 'all' && (p.gender ?? '').toLowerCase() !== genderFilter) {
+                return false;
+            }
+            if (contactFilter === 'with-email' && !p.email) return false;
+            if (contactFilter === 'without-email' && p.email) return false;
+            if (contactFilter === 'with-phone' && !p.phone) return false;
+            if (contactFilter === 'without-phone' && p.phone) return false;
+            if (q) {
+                const haystack = `${p.firstName ?? ''} ${p.lastName ?? ''} ${p.email ?? ''}`
+                    .toLowerCase();
+                if (!haystack.includes(q)) return false;
+            }
+            return true;
+        });
+
+        filtered.sort((a, b) => {
+            switch (sort) {
+                case 'oldest':
+                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                case 'name-asc':
+                    return `${a.firstName} ${a.lastName}`.localeCompare(
+                        `${b.firstName} ${b.lastName}`,
+                    );
+                case 'name-desc':
+                    return `${b.firstName} ${b.lastName}`.localeCompare(
+                        `${a.firstName} ${a.lastName}`,
+                    );
+                case 'newest':
+                default:
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }
+        });
+
+        return filtered;
+    }, [data?.patients, activeSearch, genderFilter, contactFilter, sort]);
+
+    const totalPatients = data?.pagination?.total ?? 0;
+    const totalPages = Math.max(1, data?.pagination?.totalPages ?? 1);
+    const startIndex = totalPatients === 0 ? 0 : (page - 1) * perPage + 1;
     const endIndex = Math.min(page * perPage, totalPatients);
-
     const hasActiveSearch = activeSearch !== '';
+    const hasActiveFilters =
+        hasActiveSearch ||
+        genderFilter !== 'all' ||
+        contactFilter !== 'all' ||
+        sort !== 'newest';
 
     const getPageNumbers = () => {
         const pages: (number | 'ellipsis')[] = [];
@@ -123,9 +192,52 @@ export function PatientList() {
         return pages;
     };
 
+    /**
+     * Walk every page of the patient list and build a CSV. Pulls from the
+     * API directly (rather than the React Query cache) so the export
+     * always reflects the full server-side dataset, regardless of which
+     * page is currently loaded or what filters the user has set.
+     */
+    const handleExport = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            const all: Patient[] = [];
+            const exportPageSize = 100;
+            const first = await patientsApi.list({ page: 1, pageSize: exportPageSize });
+            all.push(...first.patients);
+            const totalPagesToFetch = Math.max(1, first.pagination.totalPages);
+            for (let p = 2; p <= totalPagesToFetch; p++) {
+                const next = await patientsApi.list({ page: p, pageSize: exportPageSize });
+                all.push(...next.patients);
+            }
+
+            if (all.length === 0) {
+                showToast(
+                    'Nothing to export',
+                    'There are no patients in the system yet.',
+                    'info',
+                );
+                return;
+            }
+
+            downloadCsv(buildPatientsCsv(all), buildPatientsExportFilename());
+            showToast(
+                'Export ready',
+                `Downloaded ${all.length} patient${all.length === 1 ? '' : 's'} as CSV.`,
+                'success',
+            );
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to export patients.';
+            showToast('Export failed', message, 'error');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     if (isLoading && !data) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-md">
                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
                 <span>Loading patients...</span>
             </div>
@@ -134,8 +246,8 @@ export function PatientList() {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
-                <CircleAlert className="h-7 w-7 text-red-500" />
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-md">
+                <CircleAlert className="h-7 w-7 text-destructive" />
                 <span>Error loading patients</span>
             </div>
         );
@@ -146,20 +258,33 @@ export function PatientList() {
             {/* Page Header */}
             <div className="flex justify-between items-start gap-4 flex-wrap">
                 <div>
-                    <h1 className="text-[28px] font-bold text-foreground tracking-tight">Patients</h1>
-                    <p className="text-[13px] text-muted-foreground mt-1">Manage and monitor your diabetes patients</p>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">Patients</h1>
+                    <p className="text-base text-muted-foreground mt-1">
+                        Manage and monitor your diabetes patients
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <Button
                         variant="ghost"
-                        className="rounded-none h-9 px-4 text-[13px] font-semibold border border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+                        onClick={handleExport}
+                        disabled={isExporting || totalPatients === 0}
+                        className="rounded-lg h-9 px-4 text-base font-semibold border border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground disabled:opacity-50"
                     >
-                        <Download className="h-3.5 w-3.5 mr-2" />
-                        Export
+                        {isExporting ? (
+                            <>
+                                <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                Exporting…
+                            </>
+                        ) : (
+                            <>
+                                <Download className="h-3.5 w-3.5 mr-2" />
+                                Export CSV
+                            </>
+                        )}
                     </Button>
                     <Button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="rounded-none h-9 px-4 text-[13px] font-semibold bg-primary hover:bg-primary/80 text-primary-foreground border-0"
+                        className="rounded-lg h-9 px-4 text-base font-semibold bg-primary hover:bg-primary/80 text-primary-foreground border-0"
                     >
                         <Plus className="h-3.5 w-3.5 mr-2" />
                         New Patient
@@ -171,24 +296,34 @@ export function PatientList() {
             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
             {/* Summary Strip */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-card/30 border border-white/10 rounded-none backdrop-blur-sm">
+            <div className="flex items-center gap-3 px-4 py-3 bg-card/30 border border-white/10 rounded-lg backdrop-blur-sm">
                 <Users className="h-4 w-4 text-primary" />
-                <span className="text-[13px] text-muted-foreground font-medium">Total Patients:</span>
-                <span className="text-[17px] font-bold text-foreground tracking-tight">{totalPatients}</span>
+                <span className="text-base text-muted-foreground font-medium">
+                    Total Patients:
+                </span>
+                <span className="text-lg font-bold text-foreground tracking-tight">
+                    {totalPatients}
+                </span>
+                {hasActiveFilters && (
+                    <span className="text-sm text-muted-foreground/70 ml-auto">
+                        {visiblePatients.length} of {data?.patients.length ?? 0} on this page after
+                        filters
+                    </span>
+                )}
             </div>
 
             {/* Controls Bar */}
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-                {/* Left — Search + Per Page */}
-                <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+                {/* Left — Search */}
+                <div className="flex items-center gap-3 flex-1 min-w-[260px]">
                     <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Search patients..."
+                            placeholder="Search by name or email…"
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={handleSearchKeyPress}
-                            className="pl-9 h-9 rounded-none border-white/10 bg-card/30 text-[13px]"
+                            className="pl-9 h-9 rounded-lg border-white/10 bg-card/30 text-base"
                         />
                     </div>
                     <Button
@@ -196,18 +331,21 @@ export function PatientList() {
                         size="sm"
                         onClick={handleSearchClick}
                         disabled={isLoading}
-                        className="h-9 px-3.5 rounded-none text-[12px] font-semibold border border-primary/20 bg-primary/10 text-primary hover:bg-primary/15"
+                        className="h-9 px-3.5 rounded-lg text-sm font-semibold border border-primary/20 bg-primary/10 text-primary hover:bg-primary/15"
                     >
-                        {isLoading ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Search className="h-3 w-3 mr-1.5" />}
+                        {isLoading ? (
+                            <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                        ) : (
+                            <Search className="h-3 w-3 mr-1.5" />
+                        )}
                         Search
                     </Button>
-
                     {hasActiveSearch && (
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={handleClearSearch}
-                            className="h-9 text-[12px] rounded-none"
+                            className="h-9 text-sm rounded-lg"
                         >
                             <X className="h-3.5 w-3.5 mr-1" />
                             Clear
@@ -215,164 +353,245 @@ export function PatientList() {
                     )}
                 </div>
 
-                {/* Right — View Toggle */}
-                <TooltipProvider>
-                    <div className="flex items-center border border-white/10 rounded-none bg-card/30 backdrop-blur-sm p-0.5">
-                        {([
-                            { mode: 'grid' as ViewMode, icon: LayoutGrid, label: 'Grid View' },
-                            { mode: 'table' as ViewMode, icon: Table2, label: 'Table View' },
-                        ]).map(({ mode, icon: Icon, label }) => (
-                            <Tooltip key={mode}>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={`h-7 w-7 rounded-none transition-colors ${
-                                            viewMode === mode
-                                                ? 'bg-white/10 text-foreground'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                                        }`}
-                                        onClick={() => setViewMode(mode)}
-                                    >
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p className="text-xs">{label}</p></TooltipContent>
-                            </Tooltip>
-                        ))}
+                {/* Right — Filters + Sort */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Filter className="h-3 w-3" />
+                        <span>Gender:</span>
+                        <Select
+                            value={genderFilter}
+                            onValueChange={(v) => setGenderFilter(v as GenderFilter)}
+                        >
+                            <SelectTrigger className="w-[110px] h-8 rounded-lg bg-white/5 border-white/10 text-xs text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-lg bg-card border-white/10">
+                                <SelectItem value="all" className="text-xs rounded-lg">
+                                    All
+                                </SelectItem>
+                                <SelectItem value="male" className="text-xs rounded-lg">
+                                    Male
+                                </SelectItem>
+                                <SelectItem value="female" className="text-xs rounded-lg">
+                                    Female
+                                </SelectItem>
+                                <SelectItem value="other" className="text-xs rounded-lg">
+                                    Other
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                </TooltipProvider>
+
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span>Contact:</span>
+                        <Select
+                            value={contactFilter}
+                            onValueChange={(v) => setContactFilter(v as ContactFilter)}
+                        >
+                            <SelectTrigger className="w-[150px] h-8 rounded-lg bg-white/5 border-white/10 text-xs text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-lg bg-card border-white/10">
+                                <SelectItem value="all" className="text-xs rounded-lg">
+                                    All
+                                </SelectItem>
+                                <SelectItem value="with-email" className="text-xs rounded-lg">
+                                    With email
+                                </SelectItem>
+                                <SelectItem value="without-email" className="text-xs rounded-lg">
+                                    Without email
+                                </SelectItem>
+                                <SelectItem value="with-phone" className="text-xs rounded-lg">
+                                    With phone
+                                </SelectItem>
+                                <SelectItem value="without-phone" className="text-xs rounded-lg">
+                                    Without phone
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <ArrowDownUp className="h-3 w-3" />
+                        <span>Sort:</span>
+                        <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
+                            <SelectTrigger className="w-[140px] h-8 rounded-lg bg-white/5 border-white/10 text-xs text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-lg bg-card border-white/10">
+                                <SelectItem value="newest" className="text-xs rounded-lg">
+                                    Newest first
+                                </SelectItem>
+                                <SelectItem value="oldest" className="text-xs rounded-lg">
+                                    Oldest first
+                                </SelectItem>
+                                <SelectItem value="name-asc" className="text-xs rounded-lg">
+                                    Name A → Z
+                                </SelectItem>
+                                <SelectItem value="name-desc" className="text-xs rounded-lg">
+                                    Name Z → A
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {hasActiveFilters && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="h-8 text-xs rounded-lg text-muted-foreground hover:text-foreground"
+                        >
+                            <X className="h-3 w-3 mr-1" />
+                            Reset
+                        </Button>
+                    )}
+                </div>
             </div>
 
-            {/* Content */}
+            {/* Table */}
             <div className={`transition-opacity duration-200 ${isLoading ? 'opacity-60' : ''}`}>
-                {sortedPatients.length > 0 ? (
+                {visiblePatients.length > 0 ? (
                     <>
-                        {/* Grid View */}
-                        {viewMode === 'grid' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {sortedPatients.map((patient) => (
-                                    <PatientCard
-                                        key={patient.id}
-                                        patient={patient}
-                                        onDelete={handleDeletePatient}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        <div className="rounded-lg border border-white/10 bg-card/30 backdrop-blur-sm shadow-sm overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent border-b border-white/10">
+                                        <TableHead className="w-[260px]">Patient</TableHead>
+                                        <TableHead className="w-[120px]">Gender</TableHead>
+                                        <TableHead className="w-[220px]">Email</TableHead>
+                                        <TableHead className="w-[160px]">Mobile</TableHead>
+                                        <TableHead className="w-[140px]">Created</TableHead>
+                                        <TableHead className="w-[110px] text-right">
+                                            Actions
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {visiblePatients.map((patient) => (
+                                        <PatientTableRow
+                                            key={patient.id}
+                                            patient={patient}
+                                            onDelete={handleDeletePatient}
+                                        />
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
 
-                        {/* Table View */}
-                        {viewMode === 'table' && (
-                            <div className="rounded-none border border-white/10 bg-card/30 backdrop-blur-sm shadow-sm overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent border-b border-white/10">
-                                            <TableHead className="w-[250px]">Patient</TableHead>
-                                            <TableHead className="w-[200px]">Email</TableHead>
-                                            <TableHead className="w-[150px]">Mobile</TableHead>
-                                            <TableHead className="w-[120px]">Created</TableHead>
-                                            <TableHead className="w-[100px] text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedPatients.map((patient) => (
-                                            <PatientTableRow
-                                                key={patient.id}
-                                                patient={patient}
-                                                onDelete={handleDeletePatient}
-                                            />
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        {data?.pagination && totalPages > 1 && (
-                            <div className="flex items-center justify-between pt-2">
+                        {/* Pagination footer */}
+                        {data?.pagination && (
+                            <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[12px] text-muted-foreground">Show</span>
-                                    <Select value={String(perPage)} onValueChange={handleItemsPerPageChange}>
-                                        <SelectTrigger className="w-[65px] h-8 text-[12px] rounded-none border-white/10 bg-card/30">
+                                    <span className="text-sm text-muted-foreground">Show</span>
+                                    <Select
+                                        value={String(perPage)}
+                                        onValueChange={handlePageSizeChange}
+                                    >
+                                        <SelectTrigger className="w-[70px] h-8 text-sm rounded-lg border-white/10 bg-card/30">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-none border-white/10 bg-card">
-                                            {[10, 20, 30, 50].map((size) => (
-                                                <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                                        <SelectContent className="rounded-lg border-white/10 bg-card">
+                                            {PAGE_SIZE_OPTIONS.map((size) => (
+                                                <SelectItem key={size} value={String(size)}>
+                                                    {size}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <span className="text-[12px] text-muted-foreground">
+                                    <span className="text-sm text-muted-foreground tabular-nums">
                                         {startIndex}-{endIndex} of {totalPatients}
                                     </span>
                                 </div>
 
-                                <Pagination className="w-auto mx-0">
-                                    <PaginationContent className="gap-1">
-                                        <PaginationItem>
-                                            <PaginationPrevious
-                                                href="#"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    if (page > 1) setPage(page - 1);
-                                                }}
-                                                className={`h-8 rounded-none border-white/10 text-[12px] ${page === 1 ? 'pointer-events-none opacity-50' : ''}`}
-                                            />
-                                        </PaginationItem>
+                                {totalPages > 1 && (
+                                    <Pagination className="w-auto mx-0">
+                                        <PaginationContent className="gap-1">
+                                            <PaginationItem>
+                                                <PaginationPrevious
+                                                    href="#"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        if (page > 1) setPage(page - 1);
+                                                    }}
+                                                    className={`h-8 rounded-lg border-white/10 text-sm ${
+                                                        page === 1
+                                                            ? 'pointer-events-none opacity-50'
+                                                            : ''
+                                                    }`}
+                                                />
+                                            </PaginationItem>
 
-                                        {getPageNumbers().map((p, idx) =>
-                                            p === 'ellipsis' ? (
-                                                <PaginationItem key={`ellipsis-${idx}`}>
-                                                    <PaginationEllipsis className="h-8 w-8" />
-                                                </PaginationItem>
-                                            ) : (
-                                                <PaginationItem key={p}>
-                                                    <PaginationLink
-                                                        href="#"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setPage(p);
-                                                        }}
-                                                        isActive={page === p}
-                                                        className="h-8 w-8 rounded-none text-[12px] border-white/10"
-                                                    >
-                                                        {p}
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                            )
-                                        )}
+                                            {getPageNumbers().map((p, idx) =>
+                                                p === 'ellipsis' ? (
+                                                    <PaginationItem key={`ellipsis-${idx}`}>
+                                                        <PaginationEllipsis className="h-8 w-8" />
+                                                    </PaginationItem>
+                                                ) : (
+                                                    <PaginationItem key={p}>
+                                                        <PaginationLink
+                                                            href="#"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setPage(p);
+                                                            }}
+                                                            isActive={page === p}
+                                                            className="h-8 w-8 rounded-lg text-sm border-white/10"
+                                                        >
+                                                            {p}
+                                                        </PaginationLink>
+                                                    </PaginationItem>
+                                                ),
+                                            )}
 
-                                        <PaginationItem>
-                                            <PaginationNext
-                                                href="#"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    if (page < totalPages) setPage(page + 1);
-                                                }}
-                                                className={`h-8 rounded-none border-white/10 text-[12px] ${page === totalPages ? 'pointer-events-none opacity-50' : ''}`}
-                                            />
-                                        </PaginationItem>
-                                    </PaginationContent>
-                                </Pagination>
+                                            <PaginationItem>
+                                                <PaginationNext
+                                                    href="#"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        if (page < totalPages) setPage(page + 1);
+                                                    }}
+                                                    className={`h-8 rounded-lg border-white/10 text-sm ${
+                                                        page === totalPages
+                                                            ? 'pointer-events-none opacity-50'
+                                                            : ''
+                                                    }`}
+                                                />
+                                            </PaginationItem>
+                                        </PaginationContent>
+                                    </Pagination>
+                                )}
                             </div>
                         )}
                     </>
                 ) : (
-                    /* Empty State */
-                    <div className="flex flex-col items-center justify-center py-20 text-center border border-white/10 rounded-none bg-card/30">
-                        <div className="w-16 h-16 rounded-none bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4">
+                    <div className="flex flex-col items-center justify-center py-20 text-center border border-white/10 rounded-lg bg-card/30">
+                        <div className="w-16 h-16 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4">
                             <UserX className="h-7 w-7 text-muted-foreground/30" />
                         </div>
-                        <h3 className="text-lg font-semibold text-foreground">No patients found</h3>
+                        <h3 className="text-lg font-semibold text-foreground">
+                            {hasActiveFilters
+                                ? 'No patients match the current filters'
+                                : 'No patients found'}
+                        </h3>
                         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                            {hasActiveSearch
-                                ? 'Try adjusting your search criteria'
+                            {hasActiveFilters
+                                ? 'Try clearing the search and filters, or check the next page.'
                                 : 'Get started by adding your first patient to the system'}
                         </p>
-                        {!hasActiveSearch && (
+                        {hasActiveFilters ? (
                             <Button
                                 variant="ghost"
-                                className="mt-5 rounded-none h-9 px-4 text-[13px] font-semibold border border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+                                onClick={handleResetFilters}
+                                className="mt-5 rounded-lg h-9 px-4 text-sm font-semibold border border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+                            >
+                                <X className="h-3.5 w-3.5 mr-2" />
+                                Reset filters
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="ghost"
+                                className="mt-5 rounded-lg h-9 px-4 text-base font-semibold border border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
                                 onClick={() => setIsCreateModalOpen(true)}
                             >
                                 <Plus className="h-3.5 w-3.5 mr-2" />
@@ -390,9 +609,13 @@ export function PatientList() {
             />
             <DeletePatientDialog
                 isOpen={isDeleteDialogOpen}
-                onClose={() => { setIsDeleteDialogOpen(false); setPatientToDelete(null); }}
+                onClose={() => {
+                    setIsDeleteDialogOpen(false);
+                    setPatientToDelete(null);
+                }}
                 patient={patientToDelete}
             />
         </div>
     );
 }
+
