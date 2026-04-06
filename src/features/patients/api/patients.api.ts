@@ -1,35 +1,39 @@
 /**
- * Patients API
- * Handles patient management API calls
+ * Patients API — spec §5 "Module: Patients".
+ *
+ * Endpoints covered:
+ *   POST   /patients
+ *   GET    /patients
+ *   GET    /patients/{id}                         (returns PatientDetailResponse)
+ *   PATCH  /patients/{id}
+ *   DELETE /patients/{id}                         (permanent; no restore)
+ *   POST   /patients/{id}/medical-records
+ *   GET    /patients/{id}/medical-records
+ *   GET    /patients/{id}/medical-records/{record_id}
  */
 
 import { apiClient } from '@/src/lib/api-client';
 import { API_ROUTES } from '@/src/lib/constants';
 import {
     CreatePatientRequest,
-    UpdatePatientContactRequest,
-    CreatePatientMedicalDataRequest,
-    UpdatePatientMedicalDataRequest,
+    UpdatePatientRequest,
+    CreateMedicalRecordRequest,
     ListPatientsParams,
+    ListMedicalRecordsParams,
     Patient,
     PatientDetail,
-    PatientMedicalData,
+    MedicalRecord,
     PatientsListResponse,
-    DeletePatientResponse,
-    DeleteMedicalDataResponse,
 } from './patients.types';
 
-/**
- * Patients API object with all patient management methods
- */
 export const patientsApi = {
     // =========================================================================
     // PATIENT CRUD
     // =========================================================================
 
     /**
-     * Create a new patient
-     * POST /patients
+     * Create a new patient demographic record.
+     * POST /patients → 201 PatientResponse
      */
     create: (data: CreatePatientRequest): Promise<Patient> => {
         return apiClient.post<Patient, CreatePatientRequest>(
@@ -39,8 +43,10 @@ export const patientsApi = {
     },
 
     /**
-     * List patients with pagination and search
-     * GET /patients
+     * List patients with pagination.
+     * GET /patients — spec §3.2 returns camelCase pagination keys. The shared
+     * ApiClient.getPaginated helper is still typed with the legacy snake_case
+     * fallback, so we normalize here to the spec shape.
      */
     list: async (params?: ListPatientsParams): Promise<PatientsListResponse> => {
         const { items, pagination } = await apiClient.getPaginated<Patient>(
@@ -48,129 +54,102 @@ export const patientsApi = {
             { params }
         );
 
+        const p = pagination as unknown as Partial<{
+            page: number;
+            pageSize: number;
+            page_size: number;
+            total: number;
+            totalPages: number;
+            total_pages: number;
+        }>;
+
         return {
             patients: items,
-            pagination,
+            pagination: {
+                page: p.page ?? 1,
+                pageSize: p.pageSize ?? p.page_size ?? 20,
+                total: p.total ?? 0,
+                totalPages: p.totalPages ?? p.total_pages ?? 0,
+            },
         };
     },
 
     /**
-     * Get patient basic info
-     * GET /patients/:id
+     * Get a patient with all medical records eagerly loaded.
+     * GET /patients/:id → 200 PatientDetailResponse
+     * Errors: NOT_FOUND (404)
      */
-    getById: (patientId: string): Promise<Patient> => {
-        return apiClient.get<Patient>(
+    getById: (patientId: string): Promise<PatientDetail> => {
+        return apiClient.get<PatientDetail>(
             API_ROUTES.PATIENTS.BY_ID(patientId)
         );
     },
 
     /**
-     * Get patient with all medical records and their predictions
-     * GET /patients/:id/detail
+     * Update patient demographic fields (partial).
+     * PATCH /patients/:id — spec §5 uses PATCH, not PUT.
+     * Errors: NOT_FOUND (404)
      */
-    getDetail: (patientId: string): Promise<PatientDetail> => {
-        return apiClient.get<PatientDetail>(
-            API_ROUTES.PATIENTS.BY_ID_DETAIL(patientId)
-        );
-    },
-
-    /**
-     * Update patient contact information
-     * PUT /patients/:id
-     */
-    updateContact: (patientId: string, data: UpdatePatientContactRequest): Promise<Patient> => {
-        return apiClient.put<Patient, UpdatePatientContactRequest>(
+    update: (patientId: string, data: UpdatePatientRequest): Promise<Patient> => {
+        return apiClient.patch<Patient, UpdatePatientRequest>(
             API_ROUTES.PATIENTS.BY_ID(patientId),
             data
         );
     },
 
     /**
-     * Delete patient (soft delete)
-     * DELETE /patients/:id
+     * Permanently delete a patient and all their medical records (cascade).
+     * DELETE /patients/:id — spec §5: no restore endpoint exists.
+     * Errors: NOT_FOUND (404)
      */
-    delete: (patientId: string): Promise<DeletePatientResponse> => {
-        return apiClient.delete<DeletePatientResponse>(
+    delete: (patientId: string): Promise<null> => {
+        return apiClient.delete<null>(
             API_ROUTES.PATIENTS.BY_ID(patientId)
         );
     },
 
-    /**
-     * Restore a soft-deleted patient
-     * POST /patients/:id/restore
-     */
-    restore: (patientId: string): Promise<Patient> => {
-        return apiClient.post<Patient>(
-            API_ROUTES.PATIENTS.RESTORE(patientId)
-        );
-    },
-
     // =========================================================================
-    // MEDICAL DATA
+    // MEDICAL RECORDS
     // =========================================================================
 
     /**
-     * Create medical data for a patient
-     * POST /patients/:patientId/medical-data
+     * Add a clinical medical record to a patient.
+     * POST /patients/:id/medical-records → 201 MedicalRecordResponse
      */
-    createMedicalData: (data: CreatePatientMedicalDataRequest): Promise<PatientMedicalData> => {
-        return apiClient.post<PatientMedicalData, CreatePatientMedicalDataRequest>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA(data.patient_id),
+    createMedicalRecord: (
+        patientId: string,
+        data: CreateMedicalRecordRequest
+    ): Promise<MedicalRecord> => {
+        return apiClient.post<MedicalRecord, CreateMedicalRecordRequest>(
+            API_ROUTES.PATIENTS.MEDICAL_RECORDS(patientId),
             data
         );
     },
 
     /**
-     * Get all medical records for a patient
-     * GET /patients/:patientId/medical-data
+     * List medical records for a patient.
+     * GET /patients/:id/medical-records → 200 MedicalRecordResponse[]
+     * Query params: skip (≥0, default 0), limit (1–100, default 50).
+     * Errors: NOT_FOUND (404)
      */
-    getMedicalRecords: (patientId: string): Promise<PatientMedicalData[]> => {
-        return apiClient.get<PatientMedicalData[]>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA(patientId)
+    listMedicalRecords: (
+        patientId: string,
+        params?: ListMedicalRecordsParams
+    ): Promise<MedicalRecord[]> => {
+        return apiClient.get<MedicalRecord[]>(
+            API_ROUTES.PATIENTS.MEDICAL_RECORDS(patientId),
+            { params }
         );
     },
 
     /**
-     * Get the latest medical data record for a patient
-     * GET /patients/:patientId/medical-data/latest
+     * Get a single medical record.
+     * GET /patients/:id/medical-records/:recordId → 200 MedicalRecordResponse
+     * Errors: NOT_FOUND (404)
      */
-    getLatestMedicalData: (patientId: string): Promise<PatientMedicalData> => {
-        return apiClient.get<PatientMedicalData>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA_LATEST(patientId)
-        );
-    },
-
-    /**
-     * Get a specific medical data record by ID
-     * GET /patients/medical-data/:medicalDataId
-     */
-    getMedicalDataById: (medicalDataId: string): Promise<PatientMedicalData> => {
-        return apiClient.get<PatientMedicalData>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA_BY_ID(medicalDataId)
-        );
-    },
-
-    /**
-     * Update a specific medical data record
-     * PUT /patients/medical-data/:medicalDataId
-     */
-    updateMedicalData: (
-        medicalDataId: string,
-        data: UpdatePatientMedicalDataRequest
-    ): Promise<PatientMedicalData> => {
-        return apiClient.put<PatientMedicalData, UpdatePatientMedicalDataRequest>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA_BY_ID(medicalDataId),
-            data
-        );
-    },
-
-    /**
-     * Delete a specific medical data record (soft delete)
-     * DELETE /patients/medical-data/:medicalDataId
-     */
-    deleteMedicalData: (medicalDataId: string): Promise<DeleteMedicalDataResponse> => {
-        return apiClient.delete<DeleteMedicalDataResponse>(
-            API_ROUTES.PATIENTS.MEDICAL_DATA_BY_ID(medicalDataId)
+    getMedicalRecord: (patientId: string, recordId: string): Promise<MedicalRecord> => {
+        return apiClient.get<MedicalRecord>(
+            API_ROUTES.PATIENTS.MEDICAL_RECORD_BY_ID(patientId, recordId)
         );
     },
 };

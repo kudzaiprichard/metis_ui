@@ -1,267 +1,155 @@
 /**
- * Patients Feature Types
+ * Patients feature types — aligned to spec §5 "Module: Patients".
+ *
+ * Wire conventions:
+ *   • Response DTOs (PatientResponse, PatientDetailResponse,
+ *     MedicalRecordResponse) are camelCase — Pydantic serialises with
+ *     `populate_by_name=True` + camelCase aliases.
+ *   • Request bodies are snake_case, matching the Pydantic field names.
  */
 
 // ============================================================================
-// PREDICTION TYPES (nested in medical data)
+// RESPONSE DTOs (camelCase)
 // ============================================================================
 
-export interface PredictionQValue {
-    id: string;
-    treatment: string;
-    q_value: string;
-    rank: number;
-}
-
-export interface ExplanationFeature {
-    id: string;
-    feature_name: string;
-    scaled_value: string;
-    raw_value: string;
-    shap_value: string;
-    rank: number;
-    interpretation: string;
-    reference_range: string | null;
-}
-
-export interface ExplanationAlternative {
-    id: string;
-    rank: number;
-    treatment: string;
-    predicted_reduction: string;
-    pros: string;
-    cons: string;
-    when_to_consider: string;
-}
-
-export interface SafetyWarning {
-    id: string;
-    severity: string;
-    concern: string;
-    patient_factor: string;
-    mitigation: string;
-    reason: string | null;
-}
-
-export interface PredictionExplanation {
-    id: string;
-    summary_text: string;
-    confidence_level: string;
-    clinical_priority: string;
-    why_this_treatment: string;
-    why_not_alternatives: string;
-    base_value: string;
-    prediction_value: string;
-    feature_interactions: string | null;
-    features: ExplanationFeature[];
-    alternatives: ExplanationAlternative[];
-    created_at: string;
-}
-
-export interface PatientSummary {
-    id: string;
-    first_name: string;
-    last_name: string;
-    age: number;
-    gender: string;
-}
-
-export interface PredictionDetailResponse {
-    id: string;
-    medical_data_id: string;
-    patient: PatientSummary;
-    model_version: string;
-    recommended_treatment: string;
-    treatment_index: number;
-    predicted_reduction: string;
-    confidence_score: string;
-    confidence_margin: string;
-    q_values: PredictionQValue[];
-    explanation: PredictionExplanation | null;
-    safety_warnings: SafetyWarning[];
-    created_at: string;
-}
-
-// ============================================================================
-// PATIENT TYPES
-// ============================================================================
-
-/**
- * Patient entity
- */
+/** Spec §5 Patients — `PatientResponse` (list view). */
 export interface Patient {
     id: string;
-    first_name: string;
-    last_name: string;
-    email: string | null;
-    mobile_number: string | null;
-    created_at: string;
-    updated_at: string;
-}
-
-/**
- * Patient medical data entity (one per visit)
- */
-export interface PatientMedicalData {
-    id: string;
-    patient_id: string;
-    age: number;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string; // ISO 8601 date ("YYYY-MM-DD")
     gender: string;
-    ethnicity: string;
-    hba1c_baseline: string;
-    diabetes_duration: string;
-    fasting_glucose: string;
-    c_peptide: string;
-    egfr: string;
-    bmi: string;
-    bp_systolic: number;
-    bp_diastolic: number;
-    alt: string;
-    ldl: string;
-    hdl: string;
-    triglycerides: string;
-    previous_prediabetes: boolean;
-    hypertension: boolean;
-    ckd: boolean;
-    cvd: boolean;
-    nafld: boolean;
-    retinopathy: boolean;
-    prediction: PredictionDetailResponse | null;
-    created_at: string;
-    updated_at: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 /**
- * Patient with all medical records (detail view)
+ * Spec §5 Patients — `MedicalRecordResponse` (the 16 ML features + notes).
+ *
+ * Binary comorbidity flags (`cvd`, `ckd`, `nafld`, `hypertension`) arrive as
+ * integers `0` or `1`, not booleans (spec table, lines 731-734 / DTO 809-812).
  */
-export interface PatientDetail {
+export interface MedicalRecord {
     id: string;
-    first_name: string;
-    last_name: string;
-    email: string | null;
-    mobile_number: string | null;
-    created_at: string;
-    updated_at: string;
-    medical_records: PatientMedicalData[];
-}
-
-// ============================================================================
-// REQUEST TYPES
-// ============================================================================
-
-/**
- * Data required to create a new patient
- */
-export interface CreatePatientRequest {
-    first_name: string;
-    last_name: string;
-    email?: string;
-    mobile_number?: string;
-}
-
-/**
- * Data for updating patient contact information
- */
-export interface UpdatePatientContactRequest {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    mobile_number?: string;
-}
-
-/**
- * Data required to create patient medical data
- */
-export interface CreatePatientMedicalDataRequest {
-    patient_id: string;
+    patientId: string;
     age: number;
-    gender: 'Male' | 'Female';
-    ethnicity: 'Caucasian' | 'African' | 'Asian' | 'Hispanic' | 'Other';
-    hba1c_baseline: number;
-    diabetes_duration: number;
-    fasting_glucose: number;
-    c_peptide: number;
-    egfr: number;
     bmi: number;
-    bp_systolic: number;
-    bp_diastolic: number;
-    alt: number;
+    hba1cBaseline: number;
+    egfr: number;
+    diabetesDuration: number;
+    fastingGlucose: number;
+    cPeptide: number;
+    cvd: 0 | 1;
+    ckd: 0 | 1;
+    nafld: 0 | 1;
+    hypertension: 0 | 1;
+    bpSystolic: number;
     ldl: number;
     hdl: number;
     triglycerides: number;
-    previous_prediabetes: boolean;
-    hypertension: boolean;
-    ckd: boolean;
-    cvd: boolean;
-    nafld: boolean;
-    retinopathy: boolean;
+    alt: number;
+    notes?: string; // omitted when null per spec
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Spec §5 Patients — `PatientDetailResponse` (GET /patients/{id}). */
+export interface PatientDetail extends Patient {
+    medicalRecords: MedicalRecord[];
+}
+
+// ============================================================================
+// REQUEST BODIES (snake_case)
+// ============================================================================
+
+/** Spec §5 — gender discriminator, lowercase per spec table line 660. */
+export type PatientGender = 'male' | 'female' | 'other';
+
+/** Spec §5 — `CreatePatientRequest`. */
+export interface CreatePatientRequest {
+    first_name: string;      // 1–100 chars
+    last_name: string;       // 1–100 chars
+    date_of_birth: string;   // ISO date "YYYY-MM-DD"
+    gender: PatientGender;
+    email?: string;
+    phone?: string;          // max 20 chars
+    address?: string;        // max 500 chars
+}
+
+/** Spec §5 — `UpdatePatientRequest` (PATCH; all fields optional). */
+export interface UpdatePatientRequest {
+    first_name?: string;
+    last_name?: string;
+    date_of_birth?: string;
+    gender?: PatientGender;
+    email?: string;
+    phone?: string;
+    address?: string;
 }
 
 /**
- * Data for updating patient medical data
+ * Spec §5 — `CreateMedicalRecordRequest` (POST /patients/{id}/medical-records).
+ *
+ * Binary comorbidity flags are sent as integers `0` | `1`, not booleans
+ * (spec table lines 731-734). `notes` is optional, max 1000 chars.
  */
-export interface UpdatePatientMedicalDataRequest {
-    age?: number;
-    gender?: 'Male' | 'Female';
-    ethnicity?: 'Caucasian' | 'African' | 'Asian' | 'Hispanic' | 'Other';
-    hba1c_baseline?: number;
-    diabetes_duration?: number;
-    fasting_glucose?: number;
-    c_peptide?: number;
-    egfr?: number;
-    bmi?: number;
-    bp_systolic?: number;
-    bp_diastolic?: number;
-    alt?: number;
-    ldl?: number;
-    hdl?: number;
-    triglycerides?: number;
-    previous_prediabetes?: boolean;
-    hypertension?: boolean;
-    ckd?: boolean;
-    cvd?: boolean;
-    nafld?: boolean;
-    retinopathy?: boolean;
+export interface CreateMedicalRecordRequest {
+    age: number;                 // 18–120
+    bmi: number;                 // 10–80
+    hba1c_baseline: number;      // 3–20
+    egfr: number;                // 5–200
+    diabetes_duration: number;   // 0–60
+    fasting_glucose: number;     // 50–500
+    c_peptide: number;           // 0–10
+    cvd: 0 | 1;
+    ckd: 0 | 1;
+    nafld: 0 | 1;
+    hypertension: 0 | 1;
+    bp_systolic: number;         // 60–250
+    ldl: number;                 // 20–400
+    hdl: number;                 // 10–150
+    triglycerides: number;       // 30–800
+    alt: number;                 // 5–500
+    notes?: string;              // max 1000
 }
 
-/**
- * Parameters for filtering and paginating patients list
- */
+// ============================================================================
+// QUERY PARAMETER SHAPES
+// ============================================================================
+
+/** Spec §5 — `GET /patients` accepts `page` and `pageSize`. */
 export interface ListPatientsParams {
     page?: number;
-    per_page?: number;
-    search?: string;
+    pageSize?: number;
+}
+
+/** Spec §5 — `GET /patients/{id}/medical-records` accepts `skip` and `limit`. */
+export interface ListMedicalRecordsParams {
+    skip?: number;   // ≥ 0, default 0
+    limit?: number;  // 1–100, default 50
 }
 
 // ============================================================================
-// RESPONSE TYPES
+// ENVELOPES
 // ============================================================================
 
 /**
- * Paginated list of patients
+ * Paginated list of patients. Pagination keys are camelCase per spec §3.2;
+ * the runtime normaliser in `patients.api.ts` falls back to the api-client's
+ * legacy snake_case shape until that shared helper is migrated.
  */
 export interface PatientsListResponse {
     patients: Patient[];
     pagination: {
         page: number;
-        page_size: number;
+        pageSize: number;
         total: number;
-        total_pages: number;
+        totalPages: number;
     };
 }
 
-/**
- * Confirmation of patient deletion
- */
-export interface DeletePatientResponse {
-    deleted: boolean;
-    patient_id: string;
-}
-
-/**
- * Confirmation of medical data deletion
- */
-export interface DeleteMedicalDataResponse {
-    deleted: boolean;
-    medical_data_id: string;
-}
+// Legacy alias used by older medical record components.
+export type PatientMedicalData = MedicalRecord;
