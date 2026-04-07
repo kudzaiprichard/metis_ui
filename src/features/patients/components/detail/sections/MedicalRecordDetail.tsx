@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { PatientMedicalData } from '../../../api/patients.types';
+import { MedicalRecord } from '../../../api/patients.types';
+import type { PredictionResponse } from '@/src/features/recommendation/api/recommendations.types';
 import { MedicalRecordActions } from '../actions/MedicalRecordActions';
 import {
     Sheet,
@@ -15,24 +16,25 @@ import { Button } from '@/src/components/shadcn/button';
 import {
     CheckCircle,
     Brain,
-    ArrowRight,
-    User,
     Droplet,
     HeartPulse,
     FlaskConical,
     ListChecks,
     Users,
+    Pill,
+    ArrowRight,
 } from 'lucide-react';
 
 interface MedicalRecordDetailProps {
     isOpen: boolean;
     onClose: () => void;
-    record: PatientMedicalData | null;
+    record: MedicalRecord | null;
+    prediction?: PredictionResponse;
     onEdit: () => void;
     onDelete: () => void;
 }
 
-export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete }: MedicalRecordDetailProps) {
+export function MedicalRecordDetail({ isOpen, onClose, record, prediction }: MedicalRecordDetailProps) {
     const router = useRouter();
 
     if (!record) return null;
@@ -44,19 +46,15 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
         router.push(`/doctor/similar-patients?medicalDataId=${record.id}`);
     };
 
-    const comorbidities = [
-        { key: 'previous_prediabetes', label: 'Previous Prediabetes', value: record.previous_prediabetes },
-        { key: 'hypertension', label: 'Hypertension', value: record.hypertension },
-        { key: 'ckd', label: 'Chronic Kidney Disease', value: record.ckd },
-        { key: 'cvd', label: 'Cardiovascular Disease', value: record.cvd },
-        { key: 'nafld', label: 'NAFLD', value: record.nafld },
-        { key: 'retinopathy', label: 'Retinopathy', value: record.retinopathy },
-    ];
+    const handleViewRecommendation = () => {
+        if (prediction) router.push(`/doctor/recommendations/${prediction.id}`);
+    };
 
-    const demographicsFields = [
-        { label: 'Age', value: `${record.age} yrs` },
-        { label: 'Gender', value: record.gender },
-        { label: 'Ethnicity', value: record.ethnicity },
+    const comorbidities = [
+        { key: 'hypertension', label: 'Hypertension',          value: record.hypertension === 1 },
+        { key: 'ckd',          label: 'Chronic Kidney Disease', value: record.ckd === 1 },
+        { key: 'cvd',          label: 'Cardiovascular Disease', value: record.cvd === 1 },
+        { key: 'nafld',        label: 'NAFLD',                  value: record.nafld === 1 },
     ];
 
     const twoColSections = [
@@ -64,30 +62,30 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
             title: 'Diabetes Profile',
             icon: Droplet,
             fields: [
-                { label: 'HbA1c Baseline', value: `${parseFloat(record.hba1c_baseline).toFixed(1)}%` },
-                { label: 'Diabetes Duration', value: `${parseFloat(record.diabetes_duration).toFixed(1)} yrs` },
-                { label: 'Fasting Glucose', value: `${parseFloat(record.fasting_glucose).toFixed(1)} mg/dL` },
-                { label: 'C-Peptide', value: `${parseFloat(record.c_peptide).toFixed(2)} ng/mL` },
+                { label: 'HbA1c Baseline',    value: `${Number(record.hba1cBaseline).toFixed(1)}%` },
+                { label: 'Diabetes Duration', value: `${Number(record.diabetesDuration).toFixed(1)} yrs` },
+                { label: 'Fasting Glucose',   value: `${Number(record.fastingGlucose).toFixed(1)} mg/dL` },
+                { label: 'C-Peptide',         value: `${Number(record.cPeptide).toFixed(2)} ng/mL` },
             ],
         },
         {
             title: 'Metabolic & Cardiovascular',
             icon: HeartPulse,
             fields: [
-                { label: 'eGFR', value: `${parseFloat(record.egfr).toFixed(0)} mL/min` },
-                { label: 'BMI', value: `${parseFloat(record.bmi).toFixed(1)} kg/m²` },
-                { label: 'BP Systolic', value: `${record.bp_systolic} mmHg` },
-                { label: 'BP Diastolic', value: `${record.bp_diastolic} mmHg` },
+                { label: 'eGFR',       value: `${Number(record.egfr).toFixed(0)} mL/min` },
+                { label: 'BMI',        value: `${Number(record.bmi).toFixed(1)} kg/m²` },
+                { label: 'BP Systolic',value: `${record.bpSystolic} mmHg` },
+                { label: 'Age',        value: `${record.age} yrs` },
             ],
         },
         {
             title: 'Liver & Lipid Profile',
             icon: FlaskConical,
             fields: [
-                { label: 'ALT', value: `${parseFloat(record.alt).toFixed(1)} U/L` },
-                { label: 'LDL', value: `${parseFloat(record.ldl).toFixed(1)} mg/dL` },
-                { label: 'HDL', value: `${parseFloat(record.hdl).toFixed(1)} mg/dL` },
-                { label: 'Triglycerides', value: `${parseFloat(record.triglycerides).toFixed(1)} mg/dL` },
+                { label: 'ALT',          value: `${Number(record.alt).toFixed(1)} U/L` },
+                { label: 'LDL',          value: `${Number(record.ldl).toFixed(1)} mg/dL` },
+                { label: 'HDL',          value: `${Number(record.hdl).toFixed(1)} mg/dL` },
+                { label: 'Triglycerides',value: `${Number(record.triglycerides).toFixed(1)} mg/dL` },
             ],
         },
     ];
@@ -96,7 +94,7 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <SheetContent
                 side="right"
-                className="w-[50vw] sm:max-w-[50vw] p-0 gap-0 rounded-none border-l border-white/10 bg-[rgba(10,31,26,0.98)] backdrop-blur-xl"
+                className="w-[50vw] sm:max-w-[50vw] p-0 gap-0 rounded-lg border-l border-white/10 bg-background/95 backdrop-blur-xl"
             >
                 <div className="flex flex-col h-full">
                     {/* Fixed Header */}
@@ -105,14 +103,14 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
                             <div>
                                 <SheetTitle>Medical Record</SheetTitle>
                                 <SheetDescription className="text-xs">
-                                    {formatDate(record.created_at)}
+                                    {formatDate(record.createdAt)}
                                 </SheetDescription>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={handleFindSimilar}
-                                className="rounded-none h-8 px-3.5 text-[12px] font-semibold border border-purple-500/20 bg-purple-500/10 text-purple-400 hover:bg-purple-500/15 hover:text-purple-300"
+                                className="rounded-lg h-8 px-3.5 text-sm font-semibold border border-info/20 bg-info/10 text-info hover:bg-info/15 hover:text-info"
                             >
                                 <Users className="h-3 w-3 mr-1.5" />
                                 Find Similar
@@ -121,90 +119,69 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
                     </SheetHeader>
 
                     {/* Scrollable Content */}
-                    <ScrollArea className="h-[calc(100vh-140px)]">
+                    <ScrollArea className="flex-1 min-h-0">
                         <div className="px-6 py-4 space-y-5">
-                            {/* Prediction Banner */}
-                            {record.prediction ? (
-                                <div className="p-4 bg-primary/[0.06] border border-primary/15 rounded-none space-y-3">
-                                    <div className="flex items-start gap-3">
-                                        <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                AI Recommendation
-                                            </p>
-                                            <p className="text-[14px] font-semibold text-primary">
-                                                {record.prediction.recommended_treatment}
-                                            </p>
+
+                            {/* Prediction section */}
+                            {prediction ? (
+                                <div className="p-4 bg-primary/[0.06] border border-primary/20 rounded-lg space-y-3">
+                                    {/* Treatment + confidence row */}
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <Pill className="h-4 w-4 text-primary flex-shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-primary/70 uppercase tracking-wider">
+                                                    AI Recommendation
+                                                </p>
+                                                <p className="text-md font-bold text-primary">
+                                                    {prediction.recommendedTreatment}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 pl-8">
-                                        <div className="space-y-0.5">
-                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block">
+                                        <div className="text-right flex-shrink-0">
+                                            <p className="text-xs text-muted-foreground uppercase tracking-wider">
                                                 Confidence
-                                            </span>
-                                            <span className="text-[13px] font-bold text-foreground">
-                                                {parseFloat(record.prediction.confidence_score).toFixed(1)}%
-                                            </span>
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block">
-                                                Reduction
-                                            </span>
-                                            <span className="text-[13px] font-bold text-foreground">
-                                                {parseFloat(record.prediction.predicted_reduction).toFixed(2)}%
-                                            </span>
-                                        </div>
-                                        <div className="ml-auto">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => router.push(`/doctor/recommendations/${record.prediction!.id}`)}
-                                                className="rounded-none text-[11px] font-semibold text-primary hover:bg-primary/10 h-7 px-2.5"
-                                            >
-                                                Full Details
-                                                <ArrowRight className="h-3 w-3 ml-1.5" />
-                                            </Button>
+                                            </p>
+                                            <p className="text-md font-bold text-foreground">
+                                                {prediction.confidencePct}%
+                                                <span className="text-xs font-normal text-muted-foreground ml-1">
+                                                    ({prediction.confidenceLabel})
+                                                </span>
+                                            </p>
                                         </div>
                                     </div>
+
+                                    {/* Summary */}
+                                    <p className="text-sm text-muted-foreground/80 leading-relaxed">
+                                        {prediction.explanation.summary}
+                                    </p>
+
+                                    {/* See full recommendation */}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleViewRecommendation}
+                                        className="h-8 px-3 rounded-lg text-sm font-semibold text-primary border border-primary/20 bg-primary/5 hover:bg-primary/10 w-full justify-between"
+                                    >
+                                        <span>See full recommendation</span>
+                                        <ArrowRight className="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-none">
-                                    <Brain className="h-4 w-4 text-muted-foreground/50" />
-                                    <p className="text-[13px] text-muted-foreground">
-                                        No prediction generated for this record yet.
+                                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-lg">
+                                    <Brain className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                                    <p className="text-base text-muted-foreground">
+                                        No prediction yet. Use the <strong>Predict</strong> button on the record card to generate an AI recommendation.
                                     </p>
                                 </div>
                             )}
 
-                            {/* Demographics — 3 columns */}
-                            <div className="space-y-3">
-                                <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5 flex items-center gap-2">
-                                    <User className="h-3.5 w-3.5" />
-                                    Demographics
-                                </h3>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {demographicsFields.map((f) => (
-                                        <div
-                                            key={f.label}
-                                            className="p-3 bg-white/[0.02] border border-white/5 rounded-none space-y-1"
-                                        >
-                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block">
-                                                {f.label}
-                                            </span>
-                                            <span className="text-[13px] font-semibold text-foreground block">
-                                                {f.value}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Other sections — 2 columns */}
+                            {/* Clinical sections */}
                             {twoColSections.map((section) => {
                                 const Icon = section.icon;
                                 return (
                                     <div key={section.title} className="space-y-3">
-                                        <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5 flex items-center gap-2">
+                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5 flex items-center gap-2">
                                             <Icon className="h-3.5 w-3.5" />
                                             {section.title}
                                         </h3>
@@ -212,12 +189,12 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
                                             {section.fields.map((f) => (
                                                 <div
                                                     key={f.label}
-                                                    className="p-3 bg-white/[0.02] border border-white/5 rounded-none space-y-1"
+                                                    className="p-3 bg-white/[0.02] border border-white/5 rounded-lg space-y-1"
                                                 >
-                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block">
+                                                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block">
                                                         {f.label}
                                                     </span>
-                                                    <span className="text-[13px] font-semibold text-foreground block">
+                                                    <span className="text-base font-semibold text-foreground block">
                                                         {f.value}
                                                     </span>
                                                 </div>
@@ -229,7 +206,7 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
 
                             {/* Comorbidities */}
                             <div className="space-y-3">
-                                <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5 flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5 flex items-center gap-2">
                                     <ListChecks className="h-3.5 w-3.5" />
                                     Comorbidities
                                 </h3>
@@ -237,7 +214,7 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
                                     {comorbidities.map((c) => (
                                         <div
                                             key={c.key}
-                                            className={`flex items-center gap-2.5 p-2.5 rounded-none border text-[12px] ${
+                                            className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-sm ${
                                                 c.value
                                                     ? 'bg-primary/[0.05] border-primary/15 text-foreground/80'
                                                     : 'bg-white/[0.02] border-white/5 text-muted-foreground/50'
@@ -246,13 +223,22 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
                                             {c.value ? (
                                                 <CheckCircle className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                                             ) : (
-                                                <div className="h-3.5 w-3.5 border border-white/10 rounded-none flex-shrink-0" />
+                                                <div className="h-3.5 w-3.5 border border-white/10 rounded-lg flex-shrink-0" />
                                             )}
                                             <span>{c.label}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
+
+                            {record.notes && (
+                                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg">
+                                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block mb-1">
+                                        Notes
+                                    </span>
+                                    <p className="text-base text-foreground/80">{record.notes}</p>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
 
@@ -260,9 +246,8 @@ export function MedicalRecordDetail({ isOpen, onClose, record, onEdit, onDelete 
                     <div className="px-6 py-4 border-t border-white/5 flex-shrink-0">
                         <MedicalRecordActions
                             record={record}
+                            prediction={prediction}
                             onView={() => {}}
-                            onEdit={() => { onClose(); onEdit(); }}
-                            onDelete={() => { onClose(); onDelete(); }}
                             layout="row"
                         />
                     </div>
