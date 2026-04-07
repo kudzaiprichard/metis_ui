@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useForm, Controller, type UseFormReturn } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
 import {
     Dialog,
     DialogContent,
@@ -11,23 +14,19 @@ import {
 } from '@/src/components/shadcn/dialog';
 import { Button } from '@/src/components/shadcn/button';
 import { Input } from '@/src/components/shadcn/input';
+import { Textarea } from '@/src/components/shadcn/textarea';
 import { Label } from '@/src/components/shadcn/label';
 import { Checkbox } from '@/src/components/shadcn/checkbox';
 import { ScrollArea } from '@/src/components/shadcn/scroll-area';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/src/components/shadcn/select';
-import { useCreatePatientMedicalData } from '../../../hooks/usePatients';
+import { useCreateMedicalRecord } from '../../../hooks/usePatients';
+import { CreateMedicalRecordRequest } from '../../../api/patients.types';
 import { useToast } from '@/src/components/shared/ui/toast';
 import { ApiError } from '@/src/lib/types';
+import {
+    medicalRecordCreateSchema,
+    type MedicalRecordCreateValues,
+} from '@/src/lib/schemas/patients';
 import { Plus, Loader2 } from 'lucide-react';
-
-type GenderType = 'Male' | 'Female';
-type EthnicityType = 'Caucasian' | 'African' | 'Asian' | 'Hispanic' | 'Other';
 
 interface NewMedicalRecordModalProps {
     isOpen: boolean;
@@ -35,255 +34,304 @@ interface NewMedicalRecordModalProps {
     patientId: string;
 }
 
-const defaultForm = {
-    age: '',
-    gender: 'Male' as GenderType,
-    ethnicity: 'Caucasian' as EthnicityType,
-    hba1c_baseline: '',
-    diabetes_duration: '',
-    fasting_glucose: '',
-    c_peptide: '',
-    egfr: '',
-    bmi: '',
-    bp_systolic: '',
-    bp_diastolic: '',
-    alt: '',
-    ldl: '',
-    hdl: '',
-    triglycerides: '',
-    previous_prediabetes: false,
-    hypertension: false,
-    ckd: false,
-    cvd: false,
-    nafld: false,
-    retinopathy: false,
+/**
+ * Spec §5 Patients "CreateMedicalRecordRequest" — the schema in
+ * `src/lib/schemas/patients.ts` is the source of truth for ranges and
+ * notes length; the layout array below only describes how each field
+ * is presented in the form.
+ */
+const SPEC_FIELDS = [
+    { key: 'age', label: 'Age (years)', step: 1, hint: '' },
+    { key: 'bmi', label: 'BMI (kg/m²)', step: 0.1, hint: 'Normal: 18.5–24.9' },
+    { key: 'hba1c_baseline', label: 'HbA1c Baseline (%)', step: 0.01, hint: 'Normal: 4.0–5.6%' },
+    { key: 'egfr', label: 'eGFR (mL/min/1.73m²)', step: 0.1, hint: 'Normal: >90' },
+    { key: 'diabetes_duration', label: 'Diabetes Duration (yrs)', step: 0.1, hint: '' },
+    { key: 'fasting_glucose', label: 'Fasting Glucose (mg/dL)', step: 0.1, hint: 'Normal: 70–100' },
+    { key: 'c_peptide', label: 'C-Peptide (ng/mL)', step: 0.01, hint: 'Normal: 1.1–4.4' },
+    { key: 'bp_systolic', label: 'BP Systolic (mmHg)', step: 1, hint: 'Normal: <120' },
+    { key: 'ldl', label: 'LDL (mg/dL)', step: 0.1, hint: 'Optimal: <100' },
+    { key: 'hdl', label: 'HDL (mg/dL)', step: 0.1, hint: 'Normal: >40 (M), >50 (F)' },
+    { key: 'triglycerides', label: 'Triglycerides (mg/dL)', step: 0.1, hint: 'Normal: <150' },
+    { key: 'alt', label: 'ALT (U/L)', step: 0.1, hint: 'Normal: 7–56' },
+] as const;
+
+const COMORBIDITIES = [
+    { key: 'hypertension', label: 'Hypertension' },
+    { key: 'ckd', label: 'Chronic Kidney Disease (CKD)' },
+    { key: 'cvd', label: 'Cardiovascular Disease (CVD)' },
+    { key: 'nafld', label: 'NAFLD (Fatty Liver Disease)' },
+] as const;
+
+const NOTES_MAX = 1000;
+
+type NumericKey = (typeof SPEC_FIELDS)[number]['key'];
+type BinaryKey = (typeof COMORBIDITIES)[number]['key'];
+
+const defaultValues: MedicalRecordCreateValues = {
+    age: NaN,
+    bmi: NaN,
+    hba1c_baseline: NaN,
+    egfr: NaN,
+    diabetes_duration: NaN,
+    fasting_glucose: NaN,
+    c_peptide: NaN,
+    bp_systolic: NaN,
+    ldl: NaN,
+    hdl: NaN,
+    triglycerides: NaN,
+    alt: NaN,
+    cvd: 0,
+    ckd: 0,
+    nafld: 0,
+    hypertension: 0,
+    notes: '',
 };
 
-export function NewMedicalRecordModal({ isOpen, onClose, patientId }: NewMedicalRecordModalProps) {
-    const [formData, setFormData] = useState(defaultForm);
-    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
-    const createMedicalData = useCreatePatientMedicalData();
+export function NewMedicalRecordModal({
+    isOpen,
+    onClose,
+    patientId,
+}: NewMedicalRecordModalProps) {
+    const createRecord = useCreateMedicalRecord();
     const { showToast } = useToast();
 
+    const form = useForm<MedicalRecordCreateValues>({
+        resolver: zodResolver(medicalRecordCreateSchema),
+        defaultValues,
+    });
+
+    const {
+        register,
+        control,
+        handleSubmit,
+        watch,
+        reset,
+        formState: { errors },
+    } = form;
+
     useEffect(() => {
-        if (!isOpen) {
-            setFormData(defaultForm);
-            setFieldErrors({});
-        }
-    }, [isOpen]);
+        if (!isOpen) reset(defaultValues);
+    }, [isOpen, reset]);
 
-    const handleChange = (field: string, value: string | boolean) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        if (fieldErrors[field]) {
-            setFieldErrors((prev) => {
-                const n = { ...prev };
-                delete n[field];
-                return n;
-            });
-        }
-    };
+    const notesValue = watch('notes') ?? '';
 
-    const handleSubmit = () => {
-        setFieldErrors({});
+    const onSubmit = (values: MedicalRecordCreateValues) => {
+        const payload: CreateMedicalRecordRequest = {
+            age: values.age,
+            bmi: values.bmi,
+            hba1c_baseline: values.hba1c_baseline,
+            egfr: values.egfr,
+            diabetes_duration: values.diabetes_duration,
+            fasting_glucose: values.fasting_glucose,
+            c_peptide: values.c_peptide,
+            bp_systolic: values.bp_systolic,
+            ldl: values.ldl,
+            hdl: values.hdl,
+            triglycerides: values.triglycerides,
+            alt: values.alt,
+            cvd: values.cvd,
+            ckd: values.ckd,
+            nafld: values.nafld,
+            hypertension: values.hypertension,
+        };
+        if (values.notes.trim()) payload.notes = values.notes.trim();
 
-        createMedicalData.mutate(
-            {
-                patient_id: patientId,
-                age: Number(formData.age),
-                gender: formData.gender,
-                ethnicity: formData.ethnicity,
-                hba1c_baseline: Number(formData.hba1c_baseline),
-                diabetes_duration: Number(formData.diabetes_duration),
-                fasting_glucose: Number(formData.fasting_glucose),
-                c_peptide: Number(formData.c_peptide),
-                egfr: Number(formData.egfr),
-                bmi: Number(formData.bmi),
-                bp_systolic: Number(formData.bp_systolic),
-                bp_diastolic: Number(formData.bp_diastolic),
-                alt: Number(formData.alt),
-                ldl: Number(formData.ldl),
-                hdl: Number(formData.hdl),
-                triglycerides: Number(formData.triglycerides),
-                previous_prediabetes: formData.previous_prediabetes,
-                hypertension: formData.hypertension,
-                ckd: formData.ckd,
-                cvd: formData.cvd,
-                nafld: formData.nafld,
-                retinopathy: formData.retinopathy,
-            },
+        createRecord.mutate(
+            { patientId, data: payload },
             {
                 onSuccess: () => {
-                    showToast('Record Created', 'New medical record has been created successfully', 'success');
+                    showToast(
+                        'Record Created',
+                        'New medical record has been created successfully',
+                        'success',
+                    );
                     onClose();
                 },
                 onError: (error: ApiError) => {
-                    if (error.hasFieldErrors()) setFieldErrors(error.fieldErrors || {});
                     showToast('Creation Failed', error.getMessage(), 'error');
                 },
-            }
+            },
         );
     };
 
-    const numFields = [
-        { key: 'age', label: 'Age (years)', min: 18, max: 120, step: 1, hint: '' },
-        { key: 'hba1c_baseline', label: 'HbA1c Baseline (%)', min: 4, max: 20, step: 0.01, hint: 'Normal: 4.0–5.6%' },
-        { key: 'diabetes_duration', label: 'Diabetes Duration (yrs)', min: 0, max: 50, step: 0.1, hint: '' },
-        { key: 'fasting_glucose', label: 'Fasting Glucose (mg/dL)', min: 50, max: 500, step: 0.1, hint: 'Normal: 70–100' },
-        { key: 'c_peptide', label: 'C-Peptide (ng/mL)', min: 0, max: 10, step: 0.01, hint: 'Normal: 1.1–4.4' },
-        { key: 'egfr', label: 'eGFR (mL/min/1.73m²)', min: 0, max: 150, step: 0.1, hint: 'Normal: >90' },
-        { key: 'bmi', label: 'BMI (kg/m²)', min: 10, max: 80, step: 0.1, hint: 'Normal: 18.5–24.9' },
-        { key: 'bp_systolic', label: 'BP Systolic (mmHg)', min: 70, max: 250, step: 1, hint: 'Normal: <120' },
-        { key: 'bp_diastolic', label: 'BP Diastolic (mmHg)', min: 40, max: 150, step: 1, hint: 'Normal: <80' },
-        { key: 'alt', label: 'ALT (U/L)', min: 0, max: 500, step: 0.1, hint: 'Normal: 7–56' },
-        { key: 'ldl', label: 'LDL (mg/dL)', min: 0, max: 500, step: 0.1, hint: 'Optimal: <100' },
-        { key: 'hdl', label: 'HDL (mg/dL)', min: 0, max: 200, step: 0.1, hint: 'Normal: >40 (M), >50 (F)' },
-        { key: 'triglycerides', label: 'Triglycerides (mg/dL)', min: 0, max: 1000, step: 0.1, hint: 'Normal: <150' },
-    ];
-
-    const comorbidities = [
-        { key: 'previous_prediabetes', label: 'Previous Prediabetes' },
-        { key: 'hypertension', label: 'Hypertension' },
-        { key: 'ckd', label: 'Chronic Kidney Disease (CKD)' },
-        { key: 'cvd', label: 'Cardiovascular Disease (CVD)' },
-        { key: 'nafld', label: 'NAFLD (Fatty Liver Disease)' },
-        { key: 'retinopathy', label: 'Retinopathy' },
-    ];
-
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[820px] max-h-[90vh] p-0 gap-0 rounded-none border-white/10 bg-[rgba(10,31,26,0.97)] backdrop-blur-xl">
-                {/* Fixed Header */}
+            <DialogContent className="sm:max-w-[820px] !max-h-[90vh] !h-[90vh] !grid-rows-[auto_minmax(0,1fr)_auto] !grid-cols-1 p-0 !gap-0 rounded-lg border-white/10 bg-background/95 backdrop-blur-xl">
                 <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/5">
-                    <DialogTitle>New Visit Record</DialogTitle>
+                    <DialogTitle>New Medical Record</DialogTitle>
                     <DialogDescription className="text-xs">
-                        Enter clinical data for this visit
+                        Enter the 16 clinical features used for ML inference
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Scrollable Content */}
-                <ScrollArea className="max-h-[calc(90vh-180px)]">
-                    <div className="px-6 py-4 space-y-5">
-                        {/* Demographics */}
-                        <div className="space-y-3">
-                            <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5">
-                                Demographics
-                            </h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Age (years) *</Label>
-                                    <Input
-                                        type="number"
-                                        className={`rounded-none border-white/10 bg-white/[0.03] text-[13px] ${fieldErrors.age ? 'border-destructive/40' : ''}`}
-                                        value={formData.age}
-                                        onChange={(e) => handleChange('age', e.target.value)}
-                                        min={18} max={120}
-                                        disabled={createMedicalData.isPending}
-                                    />
-                                    {fieldErrors.age && <p className="text-xs text-destructive">{fieldErrors.age[0]}</p>}
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Gender *</Label>
-                                    <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)} disabled={createMedicalData.isPending}>
-                                        <SelectTrigger className="w-full rounded-none border-white/10 bg-white/[0.03] text-[13px]">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-none border-white/10 bg-card">
-                                            <SelectItem value="Male">Male</SelectItem>
-                                            <SelectItem value="Female">Female</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Ethnicity *</Label>
-                                    <Select value={formData.ethnicity} onValueChange={(v) => handleChange('ethnicity', v)} disabled={createMedicalData.isPending}>
-                                        <SelectTrigger className="w-full rounded-none border-white/10 bg-white/[0.03] text-[13px]">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-none border-white/10 bg-card">
-                                            {['Caucasian', 'African', 'Asian', 'Hispanic', 'Other'].map((e) => (
-                                                <SelectItem key={e} value={e}>{e}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
+                {/*
+                  The dialog uses an explicit grid (`grid-rows-[auto_minmax(0,1fr)_auto]`)
+                  so the middle row has a hard height. ScrollArea fills it via
+                  `h-full` and uses the themed scrollbar (track/thumb match the
+                  border tokens) instead of the OS-default chrome.
+                */}
+                <ScrollArea className="h-full">
+                    <form
+                        id="new-medical-record-form"
+                        onSubmit={handleSubmit(onSubmit)}
+                        className="px-6 py-5 space-y-5"
+                        noValidate
+                    >
+                        <ClinicalFeaturesGrid form={form} disabled={createRecord.isPending} />
+                        <ComorbiditiesGrid control={control} disabled={createRecord.isPending} />
 
-                        {/* Clinical Data */}
                         <div className="space-y-3">
-                            <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5">
-                                Clinical Data
+                            <h3 className="text-sm font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5">
+                                Notes
                             </h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                {numFields.filter(f => f.key !== 'age').map((f) => (
-                                    <div key={f.key} className="space-y-1.5">
-                                        <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{f.label} *</Label>
-                                        <Input
-                                            type="number"
-                                            step={f.step}
-                                            min={f.min}
-                                            max={f.max}
-                                            className={`rounded-none border-white/10 bg-white/[0.03] text-[13px] ${fieldErrors[f.key] ? 'border-destructive/40' : ''}`}
-                                            value={formData[f.key as keyof typeof formData] as string}
-                                            onChange={(e) => handleChange(f.key, e.target.value)}
-                                            disabled={createMedicalData.isPending}
-                                        />
-                                        {f.hint && <span className="text-[10px] text-muted-foreground/60 italic">{f.hint}</span>}
-                                        {fieldErrors[f.key] && <p className="text-xs text-destructive">{fieldErrors[f.key][0]}</p>}
-                                    </div>
-                                ))}
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                    Clinical Notes{' '}
+                                    <span className="text-muted-foreground/50 normal-case italic font-normal">
+                                        (optional, max {NOTES_MAX})
+                                    </span>
+                                </Label>
+                                <Textarea
+                                    maxLength={NOTES_MAX}
+                                    rows={4}
+                                    disabled={createRecord.isPending}
+                                    aria-invalid={!!errors.notes}
+                                    {...register('notes')}
+                                    className={`rounded-lg border-white/10 bg-white/[0.03] text-base resize-none ${
+                                        errors.notes ? 'border-destructive/40' : ''
+                                    }`}
+                                    placeholder="Any additional clinical context, symptoms, or observations…"
+                                />
+                                <div className="flex justify-between items-center">
+                                    {errors.notes ? (
+                                        <p className="text-xs text-destructive">
+                                            {errors.notes.message}
+                                        </p>
+                                    ) : (
+                                        <span />
+                                    )}
+                                    <span className="text-xs text-muted-foreground/60 tabular-nums">
+                                        {notesValue.length}/{NOTES_MAX}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-
-                        {/* Comorbidities */}
-                        <div className="space-y-3">
-                            <h3 className="text-[12px] font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5">
-                                Comorbidities
-                            </h3>
-                            <div className="grid grid-cols-3 gap-2">
-                                {comorbidities.map((c) => (
-                                    <label
-                                        key={c.key}
-                                        className="flex items-center gap-2.5 p-2.5 bg-white/[0.02] border border-white/5 rounded-none cursor-pointer text-[13px] text-muted-foreground hover:bg-white/[0.04] transition-colors"
-                                    >
-                                        <Checkbox
-                                            checked={formData[c.key as keyof typeof formData] as boolean}
-                                            onCheckedChange={(checked) => handleChange(c.key, !!checked)}
-                                            disabled={createMedicalData.isPending}
-                                            className="rounded-none border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
-                                        />
-                                        <span>{c.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                    </form>
                 </ScrollArea>
 
-                {/* Fixed Footer */}
-                <DialogFooter className="px-6 py-4 border-t border-white/5">
+                <DialogFooter className="px-6 py-4 border-t border-white/5 bg-background/95 backdrop-blur-xl">
                     <Button
                         type="button"
                         variant="outline"
                         onClick={onClose}
-                        disabled={createMedicalData.isPending}
-                        className="rounded-none border-white/10"
+                        disabled={createRecord.isPending}
+                        className="rounded-lg border-white/10"
                     >
                         Cancel
                     </Button>
                     <Button
-                        onClick={handleSubmit}
-                        disabled={createMedicalData.isPending}
-                        className="rounded-none"
+                        type="submit"
+                        form="new-medical-record-form"
+                        disabled={createRecord.isPending}
+                        className="rounded-lg"
                     >
-                        {createMedicalData.isPending ? (
-                            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating...</>
+                        {createRecord.isPending ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating...
+                            </>
                         ) : (
-                            <><Plus className="h-4 w-4 mr-2" /> Create Record</>
+                            <>
+                                <Plus className="h-4 w-4 mr-2" /> Create Record
+                            </>
                         )}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function ClinicalFeaturesGrid({
+    form,
+    disabled,
+}: {
+    form: UseFormReturn<MedicalRecordCreateValues>;
+    disabled: boolean;
+}) {
+    const {
+        register,
+        formState: { errors },
+    } = form;
+
+    return (
+        <div className="space-y-3">
+            <h3 className="text-sm font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5">
+                Clinical Features
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+                {SPEC_FIELDS.map((f) => {
+                    const fieldError = errors[f.key as NumericKey]?.message as string | undefined;
+                    return (
+                        <div key={f.key} className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                {f.label} *
+                            </Label>
+                            <Input
+                                type="number"
+                                step={f.step}
+                                disabled={disabled}
+                                aria-invalid={!!fieldError}
+                                {...register(f.key as NumericKey, { valueAsNumber: true })}
+                                className={`rounded-lg border-white/10 bg-white/[0.03] text-base ${
+                                    fieldError ? 'border-destructive/40' : ''
+                                }`}
+                            />
+                            {f.hint && !fieldError && (
+                                <span className="text-xs text-muted-foreground/60 italic">
+                                    {f.hint}
+                                </span>
+                            )}
+                            {fieldError && <p className="text-xs text-destructive">{fieldError}</p>}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function ComorbiditiesGrid({
+    control,
+    disabled,
+}: {
+    control: UseFormReturn<MedicalRecordCreateValues>['control'];
+    disabled: boolean;
+}) {
+    return (
+        <div className="space-y-3">
+            <h3 className="text-sm font-bold text-primary uppercase tracking-wider pb-2 border-b border-white/5">
+                Comorbidities
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+                {COMORBIDITIES.map((c) => (
+                    <Controller
+                        key={c.key}
+                        control={control}
+                        name={c.key as BinaryKey}
+                        render={({ field }) => (
+                            <label className="flex items-center gap-2.5 p-2.5 bg-white/[0.02] border border-white/5 rounded-lg cursor-pointer text-base text-muted-foreground hover:bg-white/[0.04] transition-colors">
+                                <Checkbox
+                                    checked={field.value === 1}
+                                    onCheckedChange={(checked) => field.onChange(checked ? 1 : 0)}
+                                    disabled={disabled}
+                                    className="rounded-lg border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground"
+                                />
+                                <span>{c.label}</span>
+                            </label>
+                        )}
+                    />
+                ))}
+            </div>
+        </div>
     );
 }
