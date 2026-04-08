@@ -1,40 +1,41 @@
 /**
- * Patients Hooks
- * React Query hooks for patient management
+ * Patients hooks — React Query wrappers for spec §5 Patients endpoints.
+ *
+ * Spec divergence notes:
+ *   • No restore endpoint — delete is permanent.
+ *   • GET /patients/{id} returns PatientDetailResponse directly (medical
+ *     records eager-loaded); there is no separate "detail" endpoint.
+ *   • Medical-record update/delete endpoints are not in spec §5 and were
+ *     removed along with their hooks.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '../api/patients.api';
 import {
     CreatePatientRequest,
-    UpdatePatientContactRequest,
-    CreatePatientMedicalDataRequest,
-    UpdatePatientMedicalDataRequest,
+    UpdatePatientRequest,
+    CreateMedicalRecordRequest,
     ListPatientsParams,
+    ListMedicalRecordsParams,
 } from '../api/patients.types';
 import { ApiError } from '@/src/lib/types';
 
-/**
- * Query keys for patients
- */
 export const patientsKeys = {
     all: ['patients'] as const,
     lists: () => [...patientsKeys.all, 'list'] as const,
     list: (params?: ListPatientsParams) => [...patientsKeys.lists(), params] as const,
     details: () => [...patientsKeys.all, 'detail'] as const,
     detail: (id: string) => [...patientsKeys.details(), id] as const,
-    medicalRecords: (patientId: string) => [...patientsKeys.all, 'medical-records', patientId] as const,
-    medicalData: (medicalDataId: string) => [...patientsKeys.all, 'medical-data', medicalDataId] as const,
-    latestMedicalData: (patientId: string) => [...patientsKeys.all, 'medical-data-latest', patientId] as const,
+    medicalRecords: (patientId: string, params?: ListMedicalRecordsParams) =>
+        [...patientsKeys.all, 'medical-records', patientId, params] as const,
+    medicalRecord: (patientId: string, recordId: string) =>
+        [...patientsKeys.all, 'medical-records', patientId, recordId] as const,
 };
 
 // =========================================================================
-// PATIENT QUERIES
+// QUERIES
 // =========================================================================
 
-/**
- * Hook to list patients with pagination and search
- */
 export const usePatients = (params?: ListPatientsParams) => {
     return useQuery({
         queryKey: patientsKeys.list(params),
@@ -44,7 +45,8 @@ export const usePatients = (params?: ListPatientsParams) => {
 };
 
 /**
- * Hook to get patient basic info
+ * Get a patient with all medical records eagerly loaded (spec §5: there is
+ * only one patient-by-id endpoint — it returns `PatientDetailResponse`).
  */
 export const usePatient = (patientId: string) => {
     return useQuery({
@@ -55,65 +57,31 @@ export const usePatient = (patientId: string) => {
     });
 };
 
-/**
- * Hook to get patient with all medical records and predictions
- */
-export const usePatientDetail = (patientId: string) => {
+export const usePatientMedicalRecords = (
+    patientId: string,
+    params?: ListMedicalRecordsParams
+) => {
     return useQuery({
-        queryKey: patientsKeys.detail(patientId),
-        queryFn: () => patientsApi.getDetail(patientId),
+        queryKey: patientsKeys.medicalRecords(patientId, params),
+        queryFn: () => patientsApi.listMedicalRecords(patientId, params),
         staleTime: 5 * 60 * 1000,
         enabled: !!patientId,
     });
 };
 
-// =========================================================================
-// MEDICAL DATA QUERIES
-// =========================================================================
-
-/**
- * Hook to get all medical records for a patient
- */
-export const usePatientMedicalRecords = (patientId: string) => {
+export const useMedicalRecord = (patientId: string, recordId: string) => {
     return useQuery({
-        queryKey: patientsKeys.medicalRecords(patientId),
-        queryFn: () => patientsApi.getMedicalRecords(patientId),
+        queryKey: patientsKeys.medicalRecord(patientId, recordId),
+        queryFn: () => patientsApi.getMedicalRecord(patientId, recordId),
         staleTime: 5 * 60 * 1000,
-        enabled: !!patientId,
-    });
-};
-
-/**
- * Hook to get latest medical data for a patient
- */
-export const useLatestMedicalData = (patientId: string) => {
-    return useQuery({
-        queryKey: patientsKeys.latestMedicalData(patientId),
-        queryFn: () => patientsApi.getLatestMedicalData(patientId),
-        staleTime: 5 * 60 * 1000,
-        enabled: !!patientId,
-    });
-};
-
-/**
- * Hook to get a specific medical data record by ID
- */
-export const useMedicalData = (medicalDataId: string) => {
-    return useQuery({
-        queryKey: patientsKeys.medicalData(medicalDataId),
-        queryFn: () => patientsApi.getMedicalDataById(medicalDataId),
-        staleTime: 5 * 60 * 1000,
-        enabled: !!medicalDataId,
+        enabled: !!patientId && !!recordId,
     });
 };
 
 // =========================================================================
-// PATIENT MUTATIONS
+// MUTATIONS
 // =========================================================================
 
-/**
- * Hook to create a new patient
- */
 export const useCreatePatient = () => {
     const queryClient = useQueryClient();
 
@@ -128,15 +96,12 @@ export const useCreatePatient = () => {
     });
 };
 
-/**
- * Hook to update patient contact information
- */
-export const useUpdatePatientContact = () => {
+export const useUpdatePatient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ patientId, data }: { patientId: string; data: UpdatePatientContactRequest }) =>
-            patientsApi.updateContact(patientId, data),
+        mutationFn: ({ patientId, data }: { patientId: string; data: UpdatePatientRequest }) =>
+            patientsApi.update(patientId, data),
         onSuccess: (_, { patientId }) => {
             queryClient.invalidateQueries({ queryKey: patientsKeys.lists() });
             queryClient.invalidateQueries({ queryKey: patientsKeys.detail(patientId) });
@@ -147,9 +112,6 @@ export const useUpdatePatientContact = () => {
     });
 };
 
-/**
- * Hook to delete a patient (soft delete)
- */
 export const useDeletePatient = () => {
     const queryClient = useQueryClient();
 
@@ -164,96 +126,39 @@ export const useDeletePatient = () => {
     });
 };
 
-/**
- * Hook to restore a soft-deleted patient
- */
-export const useRestorePatient = () => {
+// Legacy alias — PatientDetail uses this name; the canonical export is usePatient.
+export const usePatientDetail = usePatient;
+
+export const useCreateMedicalRecord = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (patientId: string) => patientsApi.restore(patientId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: patientsKeys.lists() });
-        },
-        onError: (error: ApiError) => {
-            console.error('Restore patient failed:', error.getFullMessage());
-        },
-    });
-};
-
-// =========================================================================
-// MEDICAL DATA MUTATIONS
-// =========================================================================
-
-/**
- * Hook to create medical data for a patient
- */
-export const useCreatePatientMedicalData = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (data: CreatePatientMedicalDataRequest) => patientsApi.createMedicalData(data),
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: patientsKeys.detail(variables.patient_id) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalRecords(variables.patient_id) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.latestMedicalData(variables.patient_id) });
-        },
-        onError: (error: ApiError) => {
-            console.error('Create medical data failed:', error.getFullMessage());
-        },
-    });
-};
-
-/**
- * Hook to update a specific medical data record
- */
-export const useUpdatePatientMedicalData = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-                         medicalDataId,
-                         patientId,
-                         data,
-                     }: {
-            medicalDataId: string;
-            patientId: string;
-            data: UpdatePatientMedicalDataRequest;
-        }) => patientsApi.updateMedicalData(medicalDataId, data),
-        onSuccess: (_, { medicalDataId, patientId }) => {
+        mutationFn: ({ patientId, data }: { patientId: string; data: CreateMedicalRecordRequest }) =>
+            patientsApi.createMedicalRecord(patientId, data),
+        onSuccess: (_, { patientId }) => {
             queryClient.invalidateQueries({ queryKey: patientsKeys.detail(patientId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalRecords(patientId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalData(medicalDataId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.latestMedicalData(patientId) });
+            queryClient.invalidateQueries({
+                queryKey: [...patientsKeys.all, 'medical-records', patientId],
+            });
         },
         onError: (error: ApiError) => {
-            console.error('Update medical data failed:', error.getFullMessage());
+            console.error('Create medical record failed:', error.getFullMessage());
         },
     });
 };
 
-/**
- * Hook to delete a specific medical data record
- */
-export const useDeletePatientMedicalData = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-                         medicalDataId,
-                         patientId,
-                     }: {
-            medicalDataId: string;
-            patientId: string;
-        }) => patientsApi.deleteMedicalData(medicalDataId),
-        onSuccess: (_, { medicalDataId, patientId }) => {
-            queryClient.invalidateQueries({ queryKey: patientsKeys.detail(patientId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalRecords(patientId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.medicalData(medicalDataId) });
-            queryClient.invalidateQueries({ queryKey: patientsKeys.latestMedicalData(patientId) });
-        },
-        onError: (error: ApiError) => {
-            console.error('Delete medical data failed:', error.getFullMessage());
+// These operations are not supported by the current backend (spec §5).
+// Stubs are kept to prevent import errors in legacy UI components.
+export const useDeletePatientMedicalData = () =>
+    useMutation({
+        mutationFn: async (_: { medicalDataId: string; patientId: string }) => {
+            throw new Error('Deleting medical records is not supported');
         },
     });
-};
+
+export const useUpdatePatientMedicalData = () =>
+    useMutation({
+        mutationFn: async (_: { medicalDataId: string; patientId: string; data: unknown }) => {
+            throw new Error('Updating medical records is not supported');
+        },
+    });
