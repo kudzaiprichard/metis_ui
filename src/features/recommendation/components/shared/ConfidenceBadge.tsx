@@ -10,18 +10,18 @@ interface ConfidenceBadgeProps {
 export function ConfidenceBadge({ score, showLabel = true }: ConfidenceBadgeProps) {
     const getLevel = () => {
         if (score >= 90) return { label: 'high', color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/20' };
-        if (score >= 75) return { label: 'medium', color: 'text-blue-400', bg: 'bg-blue-500/15', border: 'border-blue-500/20' };
-        return { label: 'low', color: 'text-amber-400', bg: 'bg-amber-500/15', border: 'border-amber-500/20' };
+        if (score >= 75) return { label: 'medium', color: 'text-info', bg: 'bg-info/15', border: 'border-info/20' };
+        return { label: 'low', color: 'text-warning', bg: 'bg-warning/15', border: 'border-warning/20' };
     };
 
     const { label, color, bg, border } = getLevel();
 
     return (
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none border text-[12px] font-semibold ${bg} ${border}`}>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm font-semibold ${bg} ${border}`}>
             <ShieldCheck className={`h-3 w-3 ${color}`} />
             <span className={`font-bold ${color}`}>{score.toFixed(1)}%</span>
             {showLabel && (
-                <span className={`uppercase tracking-wider text-[10px] opacity-80 ${color}`}>{label}</span>
+                <span className={`uppercase tracking-wider text-xs opacity-80 ${color}`}>{label}</span>
             )}
         </div>
     );
