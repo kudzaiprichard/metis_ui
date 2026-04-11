@@ -9,9 +9,9 @@ interface TreatmentBadgeProps {
 
 export function TreatmentBadge({ treatment, variant = 'default' }: TreatmentBadgeProps) {
     const styles = {
-        large: 'px-4 py-2.5 text-[15px] gap-2.5',
-        compact: 'px-2.5 py-1 text-[11px] gap-1.5',
-        default: 'px-3 py-1.5 text-[13px] gap-2',
+        large: 'px-4 py-2.5 text-md gap-2.5',
+        compact: 'px-2.5 py-1 text-xs gap-1.5',
+        default: 'px-3 py-1.5 text-base gap-2',
     };
 
     const iconSize = {
@@ -21,7 +21,7 @@ export function TreatmentBadge({ treatment, variant = 'default' }: TreatmentBadg
     };
 
     return (
-        <div className={`inline-flex items-center rounded-none border bg-primary/15 border-primary/20 font-semibold text-primary hover:bg-primary/20 hover:border-primary/30 transition-colors ${styles[variant]}`}>
+        <div className={`inline-flex items-center rounded-lg border bg-primary/15 border-primary/20 font-semibold text-primary hover:bg-primary/20 hover:border-primary/30 transition-colors ${styles[variant]}`}>
             <Pill className={`${iconSize[variant]} text-primary`} />
             <span className="truncate">{treatment}</span>
         </div>
