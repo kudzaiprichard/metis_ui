@@ -1,80 +1,81 @@
 /**
- * Similar Patients Feature Types
+ * Similar Patients Feature Types — camelCase to match backend Pydantic aliases.
+ *
+ * Numeric clinical fields are typed `number` because the backend Pydantic
+ * models (SimilarPatientProfileResponse, SimilarPatientOutcomeResponse,
+ * SimilarPatientClinicalFeaturesResponse) all serialize these as `float` /
+ * `int`. Earlier versions of this file mistakenly typed them as `string`,
+ * which forced consumers to `parseFloat(...)` even though the runtime value
+ * was already a number.
  */
 
 // ============================================================================
 // ENTITY TYPES
 // ============================================================================
 
-/**
- * Patient profile information
- */
 export interface PatientProfile {
     age: number;
     gender: string;
     ethnicity: string;
-    hba1c_baseline: string; // Decimal as string
-    c_peptide: string; // Decimal as string
-    bmi: string; // Decimal as string
-    egfr: string; // Decimal as string
-    diabetes_duration: string; // Decimal as string
-    bp_systolic: number;
-    fasting_glucose: string; // Decimal as string
+    hba1cBaseline: number;
+    cPeptide: number;
+    bmi: number;
+    egfr: number;
+    diabetesDuration: number;
+    bpSystolic: number;
+    fastingGlucose: number;
 }
 
-/**
- * Treatment outcome information
- */
 export interface Outcome {
-    hba1c_reduction: string; // Decimal as string
-    hba1c_followup: string; // Decimal as string
-    time_to_target: string;
-    adverse_events: string;
-    outcome_category: string;
+    hba1cReduction: number;
+    hba1cFollowup: number;
+    // Required. Backend has no tolerance for missing BMI fields — if the
+    // value is absent at the API boundary the request errors out before it
+    // reaches us, so the frontend can rely on these being present.
+    bmiReduction: number;
+    bmiFollowup: number;
+    timeToTarget: string;
+    adverseEvents: string;
+    outcomeCategory: string;
     success: boolean;
 }
 
 /**
- * Single similar patient case (tabular format)
+ * Single similar patient case (tabular format).
+ * `outcome` can be null when historical data is incomplete.
  */
 export interface SimilarPatientCase {
-    case_id: string;
-    similarity_score: number;
-    clinical_similarity: number;
-    comorbidity_similarity: number;
+    caseId: string;
+    similarityScore: number;
+    clinicalSimilarity: number;
+    comorbiditySimilarity: number;
     profile: PatientProfile;
     comorbidities: string[];
-    treatment_given: string;
-    drug_class: string;
-    outcome: Outcome;
+    treatmentGiven: string;
+    drugClass: string;
+    outcome: Outcome | null;
 }
 
-/**
- * Similar patients response (tabular format)
- */
-export interface SimilarPatientsResponse {
-    patient_id: string;
-    similar_cases: SimilarPatientCase[];
-    total_found: number;
-    filters_applied: Record<string, unknown>;
+export interface SimilarPatientsSearchResult {
+    cases: SimilarPatientCase[];
+    pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+    };
 }
 
 // ============================================================================
 // GRAPH TYPES
 // ============================================================================
 
-/**
- * Graph node styling
- */
 export interface GraphNodeStyle {
     color: string;
     size: string;
     shape: string;
 }
 
-/**
- * Graph node
- */
 export interface GraphNode {
     id: string;
     type: string;
@@ -83,17 +84,11 @@ export interface GraphNode {
     style: GraphNodeStyle;
 }
 
-/**
- * Graph edge styling
- */
 export interface GraphEdgeStyle {
     width: number;
     color: string;
 }
 
-/**
- * Graph edge
- */
 export interface GraphEdge {
     id: string;
     source: string;
@@ -104,21 +99,33 @@ export interface GraphEdge {
     style: GraphEdgeStyle;
 }
 
-/**
- * Graph metadata
- */
-export interface GraphMetadata {
-    query_patient: Record<string, unknown>;
-    filters_applied: Record<string, unknown>;
-    results_found: number;
-    similarity_range?: Record<string, unknown>;
+export interface QueryPatient {
+    id: string;
+    // All fields are required: the graph endpoint always populates them
+    // from the patient's MedicalRecord (numeric fields) and Patient (gender),
+    // and throws if either lookup misses. Treat missing values here as a
+    // backend bug, not a runtime case to handle.
+    age: number;
+    gender: string;
+    hba1cBaseline: number;
+    bmi: number;
+    diabetesDuration: number;
 }
 
-/**
- * Similar patients graph response
- */
+export interface SimilarityRange {
+    min: number;
+    max: number;
+}
+
+export interface GraphMetadata {
+    queryPatient: QueryPatient | null;
+    filtersApplied: string[];
+    similarityRange: SimilarityRange | null;
+    resultsFound: number;
+}
+
 export interface SimilarPatientsGraphResponse {
-    patient_id: string;
+    patientId: string;
     nodes: GraphNode[];
     edges: GraphEdge[];
     metadata: GraphMetadata;
@@ -128,95 +135,68 @@ export interface SimilarPatientsGraphResponse {
 // PATIENT DETAIL TYPES
 // ============================================================================
 
-/**
- * Demographics information
- */
 export interface Demographics {
     age: number;
     gender: string;
     ethnicity: string;
-    age_group: string;
+    ageGroup: string;
 }
 
-/**
- * Clinical features (21 base features)
- */
 export interface ClinicalFeatures {
-    hba1c_baseline: string; // Decimal as string
-    diabetes_duration: string; // Decimal as string
-    fasting_glucose: string; // Decimal as string
-    c_peptide: string; // Decimal as string
-    egfr: string; // Decimal as string
-    bmi: string; // Decimal as string
-    bp_systolic: number;
-    bp_diastolic: number;
-    alt: string; // Decimal as string
-    ldl: string; // Decimal as string
-    hdl: string; // Decimal as string
-    triglycerides: string; // Decimal as string
-    previous_prediabetes: boolean;
+    hba1cBaseline: number;
+    diabetesDuration: number;
+    fastingGlucose: number;
+    cPeptide: number;
+    egfr: number;
+    bmi: number;
+    bpSystolic: number;
+    bpDiastolic: number;
+    alt: number;
+    ldl: number;
+    hdl: number;
+    triglycerides: number;
+    previousPrediabetes: boolean;
 }
 
-/**
- * Clinical categories
- */
 export interface ClinicalCategories {
-    bmi_category: string;
-    hba1c_severity: string;
-    kidney_function: string;
+    bmiCategory: string;
+    hba1cSeverity: string;
+    kidneyFunction: string;
 }
 
-/**
- * Treatment information
- */
 export interface TreatmentInfo {
-    drug_name: string;
-    drug_class: string;
-    cost_category: string;
-    evidence_level: string;
+    drugName: string;
+    drugClass: string;
+    costCategory: string;
+    evidenceLevel: string;
 }
 
-/**
- * Complete similar patient detail
- */
 export interface SimilarPatientDetail {
-    patient_id: string;
+    patientId: string;
     demographics: Demographics;
-    clinical_features: ClinicalFeatures;
-    clinical_categories: ClinicalCategories;
+    clinicalFeatures: ClinicalFeatures;
+    clinicalCategories: ClinicalCategories;
     comorbidities: string[];
     treatment: TreatmentInfo | null;
     outcome: Outcome | null;
 }
 
 // ============================================================================
-// REQUEST TYPES
+// REQUEST TYPES — snake_case (Pydantic field names, not aliases)
 // ============================================================================
 
-/**
- * Request to find similar patients (tabular)
- * Provide either patient_id (uses latest medical record) or
- * medical_data_id (uses that specific record). If both provided,
- * medical_data_id takes priority.
- */
 export interface FindSimilarPatientsRequest {
     patient_id?: string;
-    medical_data_id?: string;
-    limit?: number; // 1-20, default 5
-    treatment_filter?: string; // e.g., 'Metformin', 'GLP-1', 'SGLT-2'
-    min_similarity?: number; // 0.0-1.0, default 0.5
+    medical_record_id?: string;
+    limit?: number;
+    treatment_filter?: string[];
+    min_similarity?: number;
 }
 
-/**
- * Request to find similar patients (graph)
- * Provide either patient_id (uses latest medical record) or
- * medical_data_id (uses that specific record). If both provided,
- * medical_data_id takes priority.
- */
 export interface FindSimilarPatientsGraphRequest {
     patient_id?: string;
-    medical_data_id?: string;
-    limit?: number; // 1-20, default 5
-    treatment_filter?: string;
-    min_similarity?: number; // 0.0-1.0, default 0.5
+    medical_record_id?: string;
+    limit?: number;
+    treatment_filter?: string[];
+    min_similarity?: number;
 }
