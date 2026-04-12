@@ -1,89 +1,95 @@
+/**
+ * SimilarPatientDetail — clinical case-file dashboard.
+ *
+ * Layout choice (deliberately distinct from the prediction page):
+ *
+ *   1. CaseFileHeader — flat 3-cell banner (outcome stamp · treatment ·
+ *      patient archetype). Reads like a case folder cover sheet.
+ *   2. TrajectoryRow — twin SVG line charts (HbA1c + BMI). The page's
+ *      centrepiece, since "what happened over time" is the unique question
+ *      this view answers.
+ *   3. Three-act story grid — Patient · Treatment · Outcome columns of
+ *      equal weight. No asymmetric sidebar; each act stands as a peer.
+ *   4. Reference vitals & labs — wide footer band for the dense numerical
+ *      detail that doesn't drive the narrative but is needed for review.
+ */
+
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, CircleAlert, Loader2 } from 'lucide-react';
+
 import { useSimilarPatientDetail } from '../../hooks/useSimilarPatients';
-import { DetailHeader } from './DetailHeader';
-import { DemographicsSection } from './DemographicsSection';
-import { ClinicalFeaturesSection } from './ClinicalFeaturesSection';
-import { TreatmentSection } from './TreatmentSection';
-import { OutcomeSection } from './OutcomeSection';
-import { Loader2, CircleAlert, User, ClipboardList, Pill, ChartLine } from 'lucide-react';
+import { CaseFileHeader } from './widgets/CaseFileHeader';
+import { ClinicalProfilePanel } from './widgets/ClinicalProfilePanel';
+import { OutcomeStoryColumn } from './widgets/OutcomeStoryColumn';
+import { PatientStoryColumn } from './widgets/PatientStoryColumn';
+import { TrajectoryRow } from './widgets/TrajectoryRow';
+import { TreatmentStoryColumn } from './widgets/TreatmentStoryColumn';
 
 interface SimilarPatientDetailProps {
     caseId: string;
 }
 
-export type TabType = 'demographics' | 'clinical' | 'treatment' | 'outcome';
-
 export function SimilarPatientDetail({ caseId }: SimilarPatientDetailProps) {
-    const [activeTab, setActiveTab] = useState<TabType>('demographics');
     const { data: patientCase, isLoading, error } = useSimilarPatientDetail(caseId);
-
-    const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
-        { id: 'demographics', label: 'Demographics', icon: User },
-        { id: 'clinical', label: 'Clinical Features', icon: ClipboardList },
-        { id: 'treatment', label: 'Treatment', icon: Pill },
-        { id: 'outcome', label: 'Outcome', icon: ChartLine },
-    ];
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-md">
                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
-                <span>Loading case details...</span>
+                <span>Loading case file…</span>
             </div>
         );
     }
 
     if (error || !patientCase) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-[14px]">
-                <CircleAlert className="h-7 w-7 text-red-500" />
-                <span>Error loading case details</span>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground text-md">
+                <CircleAlert className="h-7 w-7 text-destructive" />
+                <span>Error loading case file</span>
             </div>
         );
     }
 
+    const subtitle = `Case ${patientCase.patientId.slice(0, 12)}…`;
+
     return (
-        <div className="max-w-[1200px] mx-auto">
-            <DetailHeader patientCase={patientCase} />
+        <div className="pb-24 space-y-5">
+            <Link
+                href="/doctor/similar-patients"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to Similar Patients
+            </Link>
 
-            {/* Tab Navigation */}
-            <div className="flex gap-1 bg-white/[0.04] border border-white/10 rounded-none p-1 mb-5">
-                {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-none text-[12px] font-semibold transition-colors ${
-                                activeTab === tab.id
-                                    ? 'bg-primary/15 text-primary'
-                                    : 'text-muted-foreground/60 hover:text-foreground/90 hover:bg-white/[0.04]'
-                            }`}
-                        >
-                            <Icon className="h-3.5 w-3.5" />
-                            <span>{tab.label}</span>
-                        </button>
-                    );
-                })}
+            <header>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                    Case file
+                </h1>
+                <p className="text-base text-muted-foreground mt-1">{subtitle}</p>
+            </header>
+
+            {/* 1 — Cover sheet */}
+            <CaseFileHeader patientCase={patientCase} />
+
+            {/* 2 — What happened over time (page centrepiece) */}
+            <TrajectoryRow patientCase={patientCase} />
+
+            {/* 3 — Three-act story grid: Patient · Treatment · Outcome */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
+                <PatientStoryColumn
+                    demographics={patientCase.demographics}
+                    categories={patientCase.clinicalCategories}
+                    comorbidities={patientCase.comorbidities}
+                />
+                <TreatmentStoryColumn treatment={patientCase.treatment} />
+                <OutcomeStoryColumn outcome={patientCase.outcome} />
             </div>
 
-            {/* Tab Content */}
-            <div className="mb-24">
-                {activeTab === 'demographics' && (
-                    <DemographicsSection demographics={patientCase.demographics} comorbidities={patientCase.comorbidities} />
-                )}
-                {activeTab === 'clinical' && (
-                    <ClinicalFeaturesSection features={patientCase.clinical_features} categories={patientCase.clinical_categories} />
-                )}
-                {activeTab === 'treatment' && patientCase.treatment && (
-                    <TreatmentSection treatment={patientCase.treatment} />
-                )}
-                {activeTab === 'outcome' && patientCase.outcome && (
-                    <OutcomeSection outcome={patientCase.outcome} />
-                )}
-            </div>
+            {/* 4 — Dense reference data, parked at the bottom */}
+            <ClinicalProfilePanel features={patientCase.clinicalFeatures} />
         </div>
     );
 }
