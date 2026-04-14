@@ -1,6 +1,5 @@
 /**
- * Users API
- * Handles user management API calls
+ * Users API — admin-only user management (spec §5 Module: Users).
  */
 
 import { apiClient } from '@/src/lib/api-client';
@@ -11,16 +10,13 @@ import {
     ListUsersParams,
     User,
     UsersListResponse,
-    DeleteUserResponse,
 } from './users.types';
 
-/**
- * Users API object with all user management methods
- */
 export const usersApi = {
     /**
      * Create a new user
      * POST /users
+     * Errors: EMAIL_EXISTS (409), USERNAME_EXISTS (409), VALIDATION_ERROR (400)
      */
     create: (data: CreateUserRequest): Promise<User> => {
         return apiClient.post<User, CreateUserRequest>(
@@ -31,7 +27,10 @@ export const usersApi = {
 
     /**
      * List users with pagination and filters
-     * GET /users
+     * GET /users — spec §3.2 returns camelCase pagination keys (pageSize,
+     * totalPages). The shared ApiClient.getPaginated helper is still typed
+     * with the legacy snake_case fallback (see Shared gaps in fix.md), so we
+     * normalize here to the spec shape.
      */
     list: async (params?: ListUsersParams): Promise<UsersListResponse> => {
         const { items, pagination } = await apiClient.getPaginated<User>(
@@ -39,15 +38,30 @@ export const usersApi = {
             { params }
         );
 
+        const p = pagination as unknown as Partial<{
+            page: number;
+            pageSize: number;
+            page_size: number;
+            total: number;
+            totalPages: number;
+            total_pages: number;
+        }>;
+
         return {
             users: items,
-            pagination,
+            pagination: {
+                page: p.page ?? 1,
+                pageSize: p.pageSize ?? p.page_size ?? 20,
+                total: p.total ?? 0,
+                totalPages: p.totalPages ?? p.total_pages ?? 0,
+            },
         };
     },
 
     /**
      * Get user by ID
      * GET /users/:id
+     * Errors: USER_NOT_FOUND (404)
      */
     getById: (userId: string): Promise<User> => {
         return apiClient.get<User>(
@@ -56,43 +70,25 @@ export const usersApi = {
     },
 
     /**
-     * Get user by email
-     * GET /users/email/:email
-     */
-    getByEmail: (email: string): Promise<User> => {
-        return apiClient.get<User>(
-            API_ROUTES.USERS.BY_EMAIL(email)
-        );
-    },
-
-    /**
-     * Update user
-     * PUT /users/:id
+     * Update user (partial)
+     * PATCH /users/:id — spec §5 uses PATCH, not PUT.
+     * Errors: USER_NOT_FOUND (404), USERNAME_EXISTS (409)
      */
     update: (userId: string, data: UpdateUserRequest): Promise<User> => {
-        return apiClient.put<User, UpdateUserRequest>(
+        return apiClient.patch<User, UpdateUserRequest>(
             API_ROUTES.USERS.BY_ID(userId),
             data
         );
     },
 
     /**
-     * Delete user (soft delete)
+     * Delete user permanently (no restore endpoint per spec)
      * DELETE /users/:id
+     * Errors: USER_NOT_FOUND (404)
      */
-    delete: (userId: string): Promise<DeleteUserResponse> => {
-        return apiClient.delete<DeleteUserResponse>(
+    delete: (userId: string): Promise<null> => {
+        return apiClient.delete<null>(
             API_ROUTES.USERS.BY_ID(userId)
-        );
-    },
-
-    /**
-     * Restore soft-deleted user
-     * POST /users/:id/restore
-     */
-    restore: (userId: string): Promise<User> => {
-        return apiClient.post<User>(
-            API_ROUTES.USERS.RESTORE(userId)
         );
     },
 };

@@ -1,83 +1,72 @@
 /**
- * Users Feature Types
+ * Users Feature Types — matches backend UserResponse / CreateUserRequest /
+ * UpdateUserRequest / list query params (spec §5 Module: Users).
+ *
+ * Convention: response DTOs are camelCase on the wire; request bodies use
+ * snake_case (Pydantic serializes the Python model directly). List-endpoint
+ * query parameters are camelCase (`pageSize`, `isActive`).
  */
 
-import { UserRole } from "@/src/lib/constants";
+import { UserRole } from '@/src/lib/constants';
 
 // ============================================================================
-// USER TYPES
+// USER RESPONSE (camelCase on wire)
 // ============================================================================
 
-/**
- * User entity
- */
 export interface User {
     id: string;
     email: string;
-    first_name: string;
-    last_name: string;
-    role: string;
-    created_at: string;
-    updated_at: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    role: string; // "ADMIN" | "DOCTOR"
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
 
 // ============================================================================
-// REQUEST TYPES
+// REQUEST BODIES (snake_case on wire)
 // ============================================================================
 
-/**
- * Data required to create a new user
- */
 export interface CreateUserRequest {
     email: string;
-    password: string;
+    username: string;
     first_name: string;
     last_name: string;
+    password: string;
     role: UserRole;
 }
 
-/**
- * Data for updating user details
- */
 export interface UpdateUserRequest {
-    email?: string;
     first_name?: string;
     last_name?: string;
+    username?: string;
     role?: UserRole;
-    password?: string;
+    is_active?: boolean;
 }
 
-/**
- * Parameters for filtering and paginating users list
- */
+// ============================================================================
+// LIST QUERY PARAMS (camelCase on wire — spec §3.2 / §5)
+// ============================================================================
+
 export interface ListUsersParams {
     page?: number;
-    per_page?: number;
+    pageSize?: number;
     role?: UserRole;
-    search?: string;
+    isActive?: boolean;
 }
 
 // ============================================================================
-// RESPONSE TYPES
+// RESPONSE ENVELOPES
 // ============================================================================
 
-/**
- * Paginated list of users
- */
 export interface UsersListResponse {
     users: User[];
     pagination: {
         page: number;
-        page_size: number;
+        pageSize: number;
         total: number;
-        total_pages: number;
+        totalPages: number;
     };
-}
-
-/**
- * Confirmation of user deletion
- */
-export interface DeleteUserResponse {
-    deleted: boolean;
-    user_id: string;
 }
