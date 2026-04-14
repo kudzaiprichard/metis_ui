@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-    DEV_BASE_URL: 'http://127.0.0.1:1234/api/v1',
+    DEV_BASE_URL: 'http://127.0.0.1:8000/api/v1',
     PROD_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
     TIMEOUT: 30000, // 30 seconds
 } as const;
@@ -14,7 +14,7 @@ export const getApiBaseUrl = (): string => {
 // User Roles
 export const USER_ROLES = {
     DOCTOR: 'DOCTOR',
-    ML_ENGINEER: 'ML_ENGINEER',
+    ADMIN: 'ADMIN',
 } as const;
 
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
@@ -22,25 +22,27 @@ export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
 // Route Permissions - Single source of truth for route access control
 export const ROUTE_PERMISSIONS = {
     // Dashboard - accessible by all authenticated users
-    '/dashboard': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+    '/dashboard': [USER_ROLES.DOCTOR, USER_ROLES.ADMIN],
 
-    // Doctor routes (both roles can access)
-    '/patients': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
-    '/predictions': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
-    '/monitoring': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
-    '/similar-patients': [USER_ROLES.DOCTOR, USER_ROLES.ML_ENGINEER],
+    // Doctor routes (ADMIN inherits all DOCTOR access per spec §2.1)
+    '/patients': [USER_ROLES.DOCTOR, USER_ROLES.ADMIN],
+    '/predictions': [USER_ROLES.DOCTOR, USER_ROLES.ADMIN],
+    '/monitoring': [USER_ROLES.DOCTOR, USER_ROLES.ADMIN],
+    '/similar-patients': [USER_ROLES.DOCTOR, USER_ROLES.ADMIN],
 
-    // ML Team routes (ML_ENGINEER only)
-    '/users': [USER_ROLES.ML_ENGINEER],
-    '/models': [USER_ROLES.ML_ENGINEER],
-    '/training': [USER_ROLES.ML_ENGINEER],
-    '/playground': [USER_ROLES.ML_ENGINEER],
+    // Admin-only routes (user management + simulations per spec §2.1 and §6).
+    // Keys must match the actual URL paths the proxy sees — the `(system)`
+    // route group is invisible in the URL, so the simulations page lives at
+    // `/ml-engineer/bandit-demo`, not `/playground`.
+    '/users': [USER_ROLES.ADMIN],
+    '/models': [USER_ROLES.ADMIN],
+    '/training': [USER_ROLES.ADMIN],
+    '/ml-engineer/bandit-demo': [USER_ROLES.ADMIN],
 } as const;
 
 // API Routes
 export const API_ROUTES = {
     AUTH: {
-        REGISTER: '/auth/register',
         LOGIN: '/auth/login',
         LOGOUT: '/auth/logout',
         REFRESH: '/auth/refresh',
@@ -54,65 +56,37 @@ export const API_ROUTES = {
     },
     PATIENTS: {
         BASE: '/patients',
+        // Spec §5: GET /patients/{id} returns PatientDetailResponse with
+        // medicalRecords eagerly loaded — no /detail suffix, no /timeline,
+        // and delete is permanent (no restore endpoint).
         BY_ID: (id: string) => `/patients/${id}`,
-        BY_ID_DETAIL: (id: string) => `/patients/${id}/detail`, // ← Patient with medical data
-        MEDICAL_DATA: (patientId: string) => `/patients/${patientId}/medical-data`,
-        RESTORE: (id: string) => `/patients/${id}/restore`,
-        TIMELINE: (patientId: string) => `/patients/${patientId}/timeline`,
+        MEDICAL_RECORDS: (patientId: string) => `/patients/${patientId}/medical-records`,
+        MEDICAL_RECORD_BY_ID: (patientId: string, recordId: string) =>
+            `/patients/${patientId}/medical-records/${recordId}`,
     },
     PREDICTIONS: {
         BASE: '/predictions',
         BY_ID: (id: string) => `/predictions/${id}`,
+        DECISION: (id: string) => `/predictions/${id}/decision`,
+        BY_PATIENT: (patientId: string) => `/predictions/patient/${patientId}`,
     },
-    RECOMMENDATION: {
-        BASE: '/recommendation',
-        GENERATE: '/recommendation/generate',
-        BY_ID: (id: string) => `/recommendation/${id}`,
-    },
-    TREATMENT_DECISIONS: {
-        BASE: '/treatment-decisions',
-        BY_ID: (id: string) => `/treatment-decisions/${id}`,
-        BY_PATIENT: (patientId: string) => `/treatment-decisions/patient/${patientId}`,
-        UPDATE_OUTCOME: (id: string) => `/treatment-decisions/${id}/outcome`,
-    },
-    FOLLOW_UPS: {
-        BASE: '/follow-ups',
-        SCHEDULE: '/follow-ups/schedule',
-        BY_ID: (id: string) => `/follow-ups/${id}`,
-        BY_PATIENT: (patientId: string) => `/follow-ups/patient/${patientId}`,
-        COMPLETE: (id: string) => `/follow-ups/${id}/complete`,
-        CANCEL: (id: string) => `/follow-ups/${id}/cancel`,
-        UPCOMING: '/follow-ups/upcoming',
-    },
-    MONITORING: {
-        BASE: '/monitoring',
-        BY_ID: (id: string) => `/monitoring/${id}`,
-    },
-    MODELS: {
-        BASE: '/models',
-        BY_ID: (id: string) => `/models/${id}`,
-    },
-    ML_MODELS: {
-        BASE: '/ml/models',
-        BY_VERSION: (version: string) => `/ml/models/${version}`,
-        ACTIVE: '/ml/models/active',
-        ACTIVATE: (version: string) => `/ml/models/${version}/activate`,
-        STATUS: '/ml/models/status',
-        COMPARE: '/ml/models/compare',
-        LINEAGE: (version: string) => `/ml/models/${version}/lineage`,
-    },
-    BATCH_PREDICTIONS: {
-        BASE: '/ml/batch-predictions',
-        SUMMARY: '/ml/batch-predictions/summary',
-    },
-    ONLINE_LEARNING: {
-        BASE: '/ml/training/online-learning',
-        STATUS: '/ml/training/status',
+    INFERENCE: {
+        PREDICT: '/inference/predict',
+        PREDICT_WITH_EXPLANATION: '/inference/predict-with-explanation',
+        EXPLAIN: '/inference/explain',
+        PREDICT_BATCH: '/inference/predict-batch',
     },
     SIMILAR_PATIENTS: {
         SEARCH: '/similar-patients/search',
         SEARCH_GRAPH: '/similar-patients/search/graph',
         BY_CASE_ID: (caseId: string) => `/similar-patients/${caseId}`,
+    },
+    SIMULATIONS: {
+        BASE: '/simulations',
+        BY_ID: (id: string) => `/simulations/${id}`,
+        STREAM: (id: string) => `/simulations/${id}/stream`,
+        CANCEL: (id: string) => `/simulations/${id}/cancel`,
+        STEPS: (id: string) => `/simulations/${id}/steps`,
     },
 } as const;
 
@@ -140,3 +114,52 @@ export const HTTP_STATUS = {
     NOT_FOUND: 404,
     INTERNAL_SERVER_ERROR: 500,
 } as const;
+
+// Spec §4 machine-readable error codes. Branch on these — HTTP status alone
+// cannot distinguish e.g. INVALID_CREDENTIALS from TOKEN_REVOKED (both 401).
+// NETWORK_ERROR / REQUEST_FAILED are client-only synthesized codes.
+export const ERROR_CODES = {
+    // 400
+    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    BAD_REQUEST: 'BAD_REQUEST',
+    RECORD_PATIENT_MISMATCH: 'RECORD_PATIENT_MISMATCH',
+    TREATMENT_REQUIRED: 'TREATMENT_REQUIRED',
+    INVALID_FILE_TYPE: 'INVALID_FILE_TYPE',
+    INVALID_ENCODING: 'INVALID_ENCODING',
+    CSV_VALIDATION_FAILED: 'CSV_VALIDATION_FAILED',
+    // 401
+    INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+    AUTH_FAILED: 'AUTH_FAILED',
+    TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+    INVALID_TOKEN: 'INVALID_TOKEN',
+    INVALID_TOKEN_TYPE: 'INVALID_TOKEN_TYPE',
+    TOKEN_REVOKED: 'TOKEN_REVOKED',
+    // 403
+    ACCOUNT_INACTIVE: 'ACCOUNT_INACTIVE',
+    FORBIDDEN: 'FORBIDDEN',
+    INSUFFICIENT_ROLE: 'INSUFFICIENT_ROLE',
+    // 404
+    NOT_FOUND: 'NOT_FOUND',
+    USER_NOT_FOUND: 'USER_NOT_FOUND',
+    RECORD_NOT_FOUND: 'RECORD_NOT_FOUND',
+    PREDICTION_NOT_FOUND: 'PREDICTION_NOT_FOUND',
+    SIMULATION_NOT_FOUND: 'SIMULATION_NOT_FOUND',
+    // 409
+    EMAIL_EXISTS: 'EMAIL_EXISTS',
+    USERNAME_EXISTS: 'USERNAME_EXISTS',
+    CONFLICT: 'CONFLICT',
+    MAX_SIMULATIONS_REACHED: 'MAX_SIMULATIONS_REACHED',
+    SIMULATION_NOT_RUNNING: 'SIMULATION_NOT_RUNNING',
+    SIMULATION_NOT_CANCELLABLE: 'SIMULATION_NOT_CANCELLABLE',
+    SIMULATION_RUNNING: 'SIMULATION_RUNNING',
+    // 500 / 503
+    MODEL_NOT_FOUND: 'MODEL_NOT_FOUND',
+    EXPLANATION_FAILED: 'EXPLANATION_FAILED',
+    INTERNAL_ERROR: 'INTERNAL_ERROR',
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+    // Client-synthesized
+    NETWORK_ERROR: 'NETWORK_ERROR',
+    REQUEST_FAILED: 'REQUEST_FAILED',
+} as const;
+
+export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];

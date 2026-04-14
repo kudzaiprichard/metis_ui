@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getApiBaseUrl, API_CONFIG, COOKIE_NAMES, HTTP_STATUS, API_ROUTES } from './constants';
+import { getApiBaseUrl, API_CONFIG, COOKIE_NAMES, HTTP_STATUS, API_ROUTES, ERROR_CODES } from './constants';
 import { ApiResponse, ApiError, PaginatedResponse } from './types';
 import Cookies from 'js-cookie';
 
@@ -112,6 +112,26 @@ axiosInstance.interceptors.response.use(
                 }
 
                 if (apiError.statusCode === HTTP_STATUS.UNAUTHORIZED && !originalRequest._retry) {
+                    // Spec §4: only TOKEN_EXPIRED is refresh-recoverable.
+                    // Revoked/invalid tokens mean the session is dead — refresh would 401 too,
+                    // so skip straight to clear+redirect (fix.md line 23).
+                    // Login-path failures are not session issues — let them pass through.
+                    const code = apiError.code;
+                    if (
+                        code === ERROR_CODES.TOKEN_REVOKED ||
+                        code === ERROR_CODES.INVALID_TOKEN ||
+                        code === ERROR_CODES.INVALID_TOKEN_TYPE
+                    ) {
+                        clearAuthAndRedirect();
+                        return Promise.reject(apiError);
+                    }
+                    if (
+                        code === ERROR_CODES.INVALID_CREDENTIALS ||
+                        code === ERROR_CODES.AUTH_FAILED
+                    ) {
+                        return Promise.reject(apiError);
+                    }
+
                     if (isRefreshing) {
                         return new Promise((resolve, reject) => {
                             failedQueue.push({ resolve, reject });
@@ -136,42 +156,34 @@ axiosInstance.interceptors.response.use(
 
                     try {
                         const response = await axios.post<ApiResponse<{
-                            tokens: {
-                                access_token: {
-                                    token: string;
-                                    expires_at: string;
-                                };
-                                refresh_token: {
-                                    token: string;
-                                };
-                            };
+                            accessToken: string;
+                            refreshToken: string;
                         }>>(
                             `${getApiBaseUrl()}${API_ROUTES.AUTH.REFRESH}`,
                             { refresh_token: refreshToken }
                         );
 
                         if (response.data.success && response.data.value) {
-                            const { access_token, refresh_token } = response.data.value.tokens;
+                            const { accessToken, refreshToken: newRefreshToken } = response.data.value;
 
-                            const accessExpiry = new Date(access_token.expires_at);
-                            Cookies.set(COOKIE_NAMES.ACCESS_TOKEN, access_token.token, {
-                                expires: accessExpiry,
+                            Cookies.set(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
+                                expires: decodeJwtExpiry(accessToken),
                                 path: '/',
                                 sameSite: 'lax',
                                 secure: process.env.NODE_ENV === 'production',
                             });
 
-                            Cookies.set(COOKIE_NAMES.REFRESH_TOKEN, refresh_token.token, {
-                                expires: 30,
+                            Cookies.set(COOKIE_NAMES.REFRESH_TOKEN, newRefreshToken, {
+                                expires: decodeJwtExpiry(newRefreshToken) ?? 30,
                                 path: '/',
                                 sameSite: 'lax',
                                 secure: process.env.NODE_ENV === 'production',
                             });
 
-                            originalRequest.headers.Authorization = `Bearer ${access_token.token}`;
+                            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
                             isRefreshing = false;
-                            processQueue(null, access_token.token);
+                            processQueue(null, accessToken);
 
                             return axiosInstance(originalRequest);
                         } else {
@@ -199,7 +211,7 @@ axiosInstance.interceptors.response.use(
             const networkError = new ApiError(
                 {
                     title: 'Network Error',
-                    code: 'NETWORK_ERROR',
+                    code: ERROR_CODES.NETWORK_ERROR,
                     status: 0,
                     details: ['Unable to connect to the server. Please check your internet connection.'],
                 },
@@ -220,7 +232,7 @@ axiosInstance.interceptors.response.use(
         const genericError = new ApiError(
             {
                 title: 'Request Failed',
-                code: 'REQUEST_FAILED',
+                code: ERROR_CODES.REQUEST_FAILED,
                 status: statusCode,
                 details: [error.message],
             },
@@ -230,6 +242,19 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(genericError);
     }
 );
+
+// Spec §2.5 returns plain JWT strings with no `expires_at` — derive cookie expiry from the JWT's own `exp` claim.
+function decodeJwtExpiry(jwt: string): Date | undefined {
+    try {
+        const payload = jwt.split('.')[1];
+        if (!payload) return undefined;
+        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const { exp } = JSON.parse(atob(base64)) as { exp?: number };
+        return typeof exp === 'number' ? new Date(exp * 1000) : undefined;
+    } catch {
+        return undefined;
+    }
+}
 
 function clearAuthAndRedirect() {
     if (typeof window !== 'undefined') {
@@ -252,9 +277,9 @@ class ApiClient {
         items: T[];
         pagination: {
             page: number;
-            page_size: number;
+            pageSize: number;
             total: number;
-            total_pages: number;
+            totalPages: number;
         };
     }> {
         console.log('[ApiClient] GET paginated', url);
@@ -265,9 +290,9 @@ class ApiClient {
             items: response.data.value || [],
             pagination: response.data.pagination || {
                 page: 1,
-                page_size: 20,
+                pageSize: 20,
                 total: 0,
-                total_pages: 0,
+                totalPages: 0,
             },
         };
     }
@@ -281,6 +306,31 @@ class ApiClient {
         const response = await axiosInstance.post<ApiResponse<T>>(url, data, config);
         console.log('[ApiClient] POST result value:', url, response.data.value);
         return response.data.value as T;
+    }
+
+    async postPaginated<T, D = unknown>(
+        url: string,
+        data?: D,
+        config?: AxiosRequestConfig
+    ): Promise<{
+        items: T[];
+        // Server returns camelCase (spec §3.2); fallback uses snake_case for
+        // parity with getPaginated. Callers normalise the shape they consume.
+        pagination: Record<string, number | undefined>;
+    }> {
+        console.log('[ApiClient] POST paginated', url, 'payload:', data);
+        const response = await axiosInstance.post<PaginatedResponse<T>>(url, data, config);
+        console.log('[ApiClient] POST paginated result:', url, response.data);
+
+        return {
+            items: response.data.value || [],
+            pagination: (response.data.pagination ?? {
+                page: 1,
+                page_size: 20,
+                total: 0,
+                total_pages: 0,
+            }) as Record<string, number | undefined>,
+        };
     }
 
     async put<T, D = unknown>(
