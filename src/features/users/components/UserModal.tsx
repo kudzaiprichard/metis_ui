@@ -1,17 +1,33 @@
-/**
- * UserModal Component
- * Modal for creating or updating users
- */
-
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-import { User } from '../api/users.types';
+import { useEffect, useState } from 'react';
+import { useForm, Controller, type UseFormReturn } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/src/components/shadcn/dialog';
+import { Button } from '@/src/components/shadcn/button';
+import { Input } from '@/src/components/shadcn/input';
+import { Label } from '@/src/components/shadcn/label';
+import { Checkbox } from '@/src/components/shadcn/checkbox';
+import { User, CreateUserRequest, UpdateUserRequest } from '../api/users.types';
 import { useCreateUser, useUpdateUser } from '../hooks/useUsers';
 import { useToast } from '@/src/components/shared/ui/toast';
 import { ApiError } from '@/src/lib/types';
-import { USER_ROLES, UserRole } from '@/src/lib/constants';
-import { UpdateUserRequest } from '../api/users.types';
+import { USER_ROLES, UserRole, ERROR_CODES } from '@/src/lib/constants';
+import {
+    UserCreateValues,
+    UserEditValues,
+    userCreateSchema,
+    userEditSchema,
+} from '@/src/lib/schemas/users';
+import { AtSign, Plus, Check, Loader2, Eye, EyeOff, Stethoscope, ShieldCheck } from 'lucide-react';
 
 interface UserModalProps {
     isOpen: boolean;
@@ -19,674 +35,574 @@ interface UserModalProps {
     user?: User | null;
 }
 
+const emptyCreate: UserCreateValues = {
+    email: '',
+    username: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    role: USER_ROLES.DOCTOR as UserRole,
+};
+
+const emptyEdit: UserEditValues = {
+    username: '',
+    firstName: '',
+    lastName: '',
+    role: USER_ROLES.DOCTOR as UserRole,
+    isActive: true,
+};
+
 export function UserModal({ isOpen, onClose, user }: UserModalProps) {
     const isEditMode = !!user;
-
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        first_name: '',
-        last_name: '',
-        role: USER_ROLES.DOCTOR as UserRole,
-    });
-
     const [showPassword, setShowPassword] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
     const createUser = useCreateUser();
     const updateUser = useUpdateUser();
     const { showToast } = useToast();
 
-    // Initialize form with user data in edit mode
+    const createForm = useForm<UserCreateValues>({
+        resolver: zodResolver(userCreateSchema),
+        defaultValues: emptyCreate,
+    });
+
+    const editForm = useForm<UserEditValues>({
+        resolver: zodResolver(userEditSchema),
+        defaultValues: emptyEdit,
+    });
+
     useEffect(() => {
         if (!isOpen) {
-            // Reset form when modal closes
-            setFormData({
-                email: '',
-                password: '',
-                first_name: '',
-                last_name: '',
-                role: USER_ROLES.DOCTOR,
-            });
-            setFieldErrors({});
+            createForm.reset(emptyCreate);
+            editForm.reset(emptyEdit);
             setShowPassword(false);
-        } else if (isEditMode && user) {
-            // Load user data for editing
-            setFormData({
-                email: user.email,
-                password: '',
-                first_name: user.first_name,
-                last_name: user.last_name,
-                role: user.role.toUpperCase() as UserRole,
-            });
-        }
-    }, [isOpen, isEditMode, user]);
-
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        setFieldErrors({});
-
-        // Validation
-        if (!isEditMode && !formData.email) {
-            showToast('Validation Error', 'Email is required', 'error');
             return;
         }
-
-        if (!isEditMode && !formData.password) {
-            showToast('Validation Error', 'Password is required', 'error');
-            return;
-        }
-
-        if (!formData.first_name || !formData.last_name) {
-            showToast('Validation Error', 'First name and last name are required', 'error');
-            return;
-        }
-
         if (isEditMode && user) {
-            // Update user
-            const updateData: UpdateUserRequest = {
-                first_name: formData.first_name,
-                last_name: formData.last_name,
-                email: formData.email,
-                role: formData.role,
-            };
-
-            // Only include password if it's been filled
-            if (formData.password) {
-                updateData.password = formData.password;
-            }
-
-            updateUser.mutate(
-                { userId: user.id, data: updateData },
-                {
-                    onSuccess: () => {
-                        showToast(
-                            'User Updated',
-                            `${formData.first_name} ${formData.last_name} has been updated successfully`,
-                            'success'
-                        );
-                        onClose();
-                    },
-                    onError: (error: ApiError) => {
-                        if (error.hasFieldErrors()) {
-                            setFieldErrors(error.fieldErrors || {});
-                        }
-                        showToast('Update Failed', error.getMessage(), 'error');
-                    },
-                }
-            );
-        } else {
-            // Create user
-            createUser.mutate(formData, {
-                onSuccess: () => {
-                    showToast(
-                        'User Created',
-                        `${formData.first_name} ${formData.last_name} has been created successfully`,
-                        'success'
-                    );
-                    onClose();
-                },
-                onError: (error: ApiError) => {
-                    if (error.hasFieldErrors()) {
-                        setFieldErrors(error.fieldErrors || {});
-                    }
-                    showToast('Creation Failed', error.getMessage(), 'error');
-                },
+            editForm.reset({
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: (user.role.toUpperCase() as UserRole) ?? USER_ROLES.DOCTOR,
+                isActive: user.isActive,
             });
         }
-    };
-
-    const handleChange = (field: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear field error when user starts typing
-        if (fieldErrors[field]) {
-            setFieldErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
-        }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, isEditMode, user]);
 
     const isPending = createUser.isPending || updateUser.isPending;
 
-    if (!isOpen) return null;
+    const handleMutationError = (error: ApiError, defaultTitle: string) => {
+        switch (error.code) {
+            case ERROR_CODES.EMAIL_EXISTS:
+                showToast(
+                    'Email already registered',
+                    'An account with this email already exists.',
+                    'error',
+                );
+                return;
+            case ERROR_CODES.USERNAME_EXISTS:
+                showToast(
+                    'Username taken',
+                    'That username is already in use. Please choose a different one.',
+                    'error',
+                );
+                return;
+            case ERROR_CODES.USER_NOT_FOUND:
+                showToast('User not found', 'This user may have been deleted.', 'error');
+                return;
+            default:
+                showToast(defaultTitle, error.getMessage(), 'error');
+        }
+    };
+
+    const onCreate = (values: UserCreateValues) => {
+        const payload: CreateUserRequest = {
+            email: values.email,
+            username: values.username,
+            first_name: values.firstName,
+            last_name: values.lastName,
+            password: values.password,
+            role: values.role,
+        };
+        createUser.mutate(payload, {
+            onSuccess: () => {
+                showToast(
+                    'User Created',
+                    `${values.firstName} ${values.lastName} has been created successfully`,
+                    'success',
+                );
+                onClose();
+            },
+            onError: (error: ApiError) => handleMutationError(error, 'Creation Failed'),
+        });
+    };
+
+    const onEdit = (values: UserEditValues) => {
+        if (!user) return;
+        // Spec §5 UpdateUserRequest — only send fields that actually changed.
+        const payload: UpdateUserRequest = {};
+        if (values.firstName !== user.firstName) payload.first_name = values.firstName;
+        if (values.lastName !== user.lastName) payload.last_name = values.lastName;
+        if (values.username !== user.username) payload.username = values.username;
+        if (values.role !== (user.role.toUpperCase() as UserRole)) payload.role = values.role;
+        if (values.isActive !== user.isActive) payload.is_active = values.isActive;
+
+        if (Object.keys(payload).length === 0) {
+            onClose();
+            return;
+        }
+
+        updateUser.mutate(
+            { userId: user.id, data: payload },
+            {
+                onSuccess: () => {
+                    showToast(
+                        'User Updated',
+                        `${values.firstName} ${values.lastName} has been updated successfully`,
+                        'success',
+                    );
+                    onClose();
+                },
+                onError: (error: ApiError) => handleMutationError(error, 'Update Failed'),
+            },
+        );
+    };
 
     return (
-        <>
-            <div className="modal-overlay" onClick={onClose}>
-                <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                    {/* Header */}
-                    <div className="modal-header">
-                        <div className="header-content">
-                            <h2 className="modal-title">
-                                {isEditMode ? 'Edit User' : 'Add New User'}
-                            </h2>
-                            <p className="modal-subtitle">
-                                {isEditMode
-                                    ? 'Update user information and role'
-                                    : 'Create a new user account for the system'}
-                            </p>
-                        </div>
-                        <button className="close-btn" onClick={onClose} type="button">
-                            <i className="fa-solid fa-xmark"></i>
-                        </button>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="rounded-lg border-white/10 bg-background/95 backdrop-blur-xl shadow-2xl max-w-[480px] p-0 gap-0">
+                <DialogHeader className="p-5 pb-4 border-b border-white/10">
+                    <DialogTitle className="text-lg font-semibold text-foreground">
+                        {isEditMode ? 'Edit User' : 'Add New User'}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm text-muted-foreground">
+                        {isEditMode
+                            ? 'Update user information, role, and active status'
+                            : 'Create a new user account for the system'}
+                    </DialogDescription>
+                </DialogHeader>
+
+                {isEditMode ? (
+                    <EditFormBody
+                        form={editForm}
+                        user={user}
+                        isPending={isPending}
+                        onSubmit={onEdit}
+                        onCancel={onClose}
+                    />
+                ) : (
+                    <CreateFormBody
+                        form={createForm}
+                        isPending={isPending}
+                        showPassword={showPassword}
+                        onTogglePassword={() => setShowPassword((v) => !v)}
+                        onSubmit={onCreate}
+                        onCancel={onClose}
+                    />
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// ---------------------------------------------------------------------------
+
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null;
+    return <p className="text-xs text-destructive">{message}</p>;
+}
+
+function RolePicker({
+    value,
+    disabled,
+    onChange,
+}: {
+    value: UserRole;
+    disabled: boolean;
+    onChange: (role: UserRole) => void;
+}) {
+    return (
+        <div className="grid grid-cols-2 gap-2.5">
+            <button
+                type="button"
+                onClick={() => onChange(USER_ROLES.DOCTOR)}
+                disabled={disabled}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
+                    value === USER_ROLES.DOCTOR
+                        ? 'bg-primary/[0.12] border-primary text-foreground'
+                        : 'bg-white/[0.03] border-white/10 text-muted-foreground hover:bg-white/[0.06] hover:border-white/15'
+                }`}
+            >
+                <Stethoscope
+                    className={`h-5 w-5 ${value === USER_ROLES.DOCTOR ? 'text-primary' : ''}`}
+                />
+                <span className="text-base font-medium">Doctor</span>
+            </button>
+            <button
+                type="button"
+                onClick={() => onChange(USER_ROLES.ADMIN)}
+                disabled={disabled}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all ${
+                    value === USER_ROLES.ADMIN
+                        ? 'bg-primary/[0.12] border-primary text-foreground'
+                        : 'bg-white/[0.03] border-white/10 text-muted-foreground hover:bg-white/[0.06] hover:border-white/15'
+                }`}
+            >
+                <ShieldCheck
+                    className={`h-5 w-5 ${value === USER_ROLES.ADMIN ? 'text-primary' : ''}`}
+                />
+                <span className="text-base font-medium">Admin</span>
+            </button>
+        </div>
+    );
+}
+
+function CreateFormBody({
+    form,
+    isPending,
+    showPassword,
+    onTogglePassword,
+    onSubmit,
+    onCancel,
+}: {
+    form: UseFormReturn<UserCreateValues>;
+    isPending: boolean;
+    showPassword: boolean;
+    onTogglePassword: () => void;
+    onSubmit: (values: UserCreateValues) => void;
+    onCancel: () => void;
+}) {
+    const {
+        register,
+        control,
+        handleSubmit,
+        formState: { errors },
+    } = form;
+
+    return (
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+            <div className="p-5 flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="first_name" className="text-sm text-muted-foreground">
+                            First Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="first_name"
+                            placeholder="John"
+                            disabled={isPending}
+                            aria-invalid={!!errors.firstName}
+                            maxLength={100}
+                            {...register('firstName')}
+                            className="rounded-lg bg-white/5 border-white/10 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                        />
+                        <FieldError message={errors.firstName?.message} />
                     </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="last_name" className="text-sm text-muted-foreground">
+                            Last Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="last_name"
+                            placeholder="Smith"
+                            disabled={isPending}
+                            aria-invalid={!!errors.lastName}
+                            maxLength={100}
+                            {...register('lastName')}
+                            className="rounded-lg bg-white/5 border-white/10 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                        />
+                        <FieldError message={errors.lastName?.message} />
+                    </div>
+                </div>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit}>
-                        <div className="modal-content">
-                            {/* Name Fields - Side by Side */}
-                            <div className="name-row">
-                                <div className="input-group">
-                                    <label className="input-label" htmlFor="first_name">
-                                        First Name <span className="required">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="first_name"
-                                        className={`input-field ${fieldErrors.first_name ? 'error' : ''}`}
-                                        placeholder="John"
-                                        value={formData.first_name}
-                                        onChange={(e) => handleChange('first_name', e.target.value)}
-                                        disabled={isPending}
-                                        autoComplete="given-name"
-                                    />
-                                    {fieldErrors.first_name && (
-                                        <p className="error-text">{fieldErrors.first_name[0]}</p>
-                                    )}
-                                </div>
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="username" className="text-sm text-muted-foreground">
+                        Username <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            id="username"
+                            placeholder="johnsmith"
+                            disabled={isPending}
+                            aria-invalid={!!errors.username}
+                            maxLength={100}
+                            {...register('username')}
+                            className="rounded-lg bg-white/5 border-white/10 pl-8 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                        />
+                    </div>
+                    {errors.username ? (
+                        <FieldError message={errors.username.message} />
+                    ) : (
+                        <p className="text-xs text-muted-foreground">3–100 characters</p>
+                    )}
+                </div>
 
-                                <div className="input-group">
-                                    <label className="input-label" htmlFor="last_name">
-                                        Last Name <span className="required">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="last_name"
-                                        className={`input-field ${fieldErrors.last_name ? 'error' : ''}`}
-                                        placeholder="Smith"
-                                        value={formData.last_name}
-                                        onChange={(e) => handleChange('last_name', e.target.value)}
-                                        disabled={isPending}
-                                        autoComplete="family-name"
-                                    />
-                                    {fieldErrors.last_name && (
-                                        <p className="error-text">{fieldErrors.last_name[0]}</p>
-                                    )}
-                                </div>
-                            </div>
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="email" className="text-sm text-muted-foreground">
+                        Email Address <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="user@hospital.com"
+                        disabled={isPending}
+                        aria-invalid={!!errors.email}
+                        {...register('email')}
+                        className="rounded-lg bg-white/5 border-white/10 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                    />
+                    <FieldError message={errors.email?.message} />
+                </div>
 
-                            {/* Email */}
-                            <div className="input-group">
-                                <label className="input-label" htmlFor="email">
-                                    Email Address <span className="required">*</span>
-                                </label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    className={`input-field ${fieldErrors.email ? 'error' : ''}`}
-                                    placeholder="user@hospital.com"
-                                    value={formData.email}
-                                    onChange={(e) => handleChange('email', e.target.value)}
-                                    disabled={isPending}
-                                    autoComplete="email"
-                                />
-                                {fieldErrors.email && (
-                                    <p className="error-text">{fieldErrors.email[0]}</p>
-                                )}
-                            </div>
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="password" className="text-sm text-muted-foreground">
+                        Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Enter password"
+                            disabled={isPending}
+                            aria-invalid={!!errors.password}
+                            maxLength={128}
+                            {...register('password')}
+                            className="rounded-lg bg-white/5 border-white/10 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary pr-10"
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                            onClick={onTogglePassword}
+                            tabIndex={-1}
+                        >
+                            {showPassword ? (
+                                <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                            )}
+                        </Button>
+                    </div>
+                    {errors.password ? (
+                        <FieldError message={errors.password.message} />
+                    ) : (
+                        <p className="text-xs text-muted-foreground">8–128 characters</p>
+                    )}
+                </div>
 
-                            {/* Password */}
-                            <div className="input-group">
-                                <label className="input-label" htmlFor="password">
-                                    Password {isEditMode && <span className="optional">(optional)</span>}
-                                    {!isEditMode && <span className="required">*</span>}
-                                </label>
-                                <div className="password-wrapper">
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        id="password"
-                                        className={`input-field ${fieldErrors.password ? 'error' : ''}`}
-                                        placeholder={isEditMode ? 'Leave blank to keep current' : 'Enter password'}
-                                        value={formData.password}
-                                        onChange={(e) => handleChange('password', e.target.value)}
-                                        disabled={isPending}
-                                        autoComplete={isEditMode ? 'new-password' : 'new-password'}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="password-toggle"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        tabIndex={-1}
-                                    >
-                                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                    </button>
-                                </div>
-                                {fieldErrors.password && (
-                                    <p className="error-text">{fieldErrors.password[0]}</p>
-                                )}
-                            </div>
-
-                            {/* Role */}
-                            <div className="input-group">
-                                <label className="input-label" htmlFor="role">
-                                    Role <span className="required">*</span>
-                                </label>
-                                <div className="role-selector">
-                                    <label className={`role-option ${formData.role === USER_ROLES.DOCTOR ? 'selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="role"
-                                            value={USER_ROLES.DOCTOR}
-                                            checked={formData.role === USER_ROLES.DOCTOR}
-                                            onChange={(e) => handleChange('role', e.target.value)}
-                                            disabled={isPending}
-                                        />
-                                        <div className="role-content">
-                                            <i className="fa-solid fa-user-doctor"></i>
-                                            <span>Doctor</span>
-                                        </div>
-                                    </label>
-                                    <label className={`role-option ${formData.role === USER_ROLES.ML_ENGINEER ? 'selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="role"
-                                            value={USER_ROLES.ML_ENGINEER}
-                                            checked={formData.role === USER_ROLES.ML_ENGINEER}
-                                            onChange={(e) => handleChange('role', e.target.value)}
-                                            disabled={isPending}
-                                        />
-                                        <div className="role-content">
-                                            <i className="fa-solid fa-brain"></i>
-                                            <span>ML Engineer</span>
-                                        </div>
-                                    </label>
-                                </div>
-                                {fieldErrors.role && (
-                                    <p className="error-text">{fieldErrors.role[0]}</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="modal-actions">
-                            <button
-                                type="button"
-                                className="modal-btn cancel"
-                                onClick={onClose}
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                        Role <span className="text-red-500">*</span>
+                    </Label>
+                    <Controller
+                        control={control}
+                        name="role"
+                        render={({ field }) => (
+                            <RolePicker
+                                value={field.value}
                                 disabled={isPending}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                className="modal-btn submit"
-                                disabled={isPending}
-                            >
-                                {isPending ? (
-                                    <>
-                                        <i className="fa-solid fa-spinner fa-spin"></i>
-                                        {isEditMode ? 'Updating...' : 'Creating...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className={`fa-solid ${isEditMode ? 'fa-check' : 'fa-plus'}`}></i>
-                                        {isEditMode ? 'Update User' : 'Create User'}
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </form>
+                                onChange={field.onChange}
+                            />
+                        )}
+                    />
+                    <FieldError message={errors.role?.message} />
                 </div>
             </div>
 
-            <style jsx>{`
-                .modal-overlay {
-                    position: fixed;
-                    inset: 0;
-                    background: rgba(0, 0, 0, 0.75);
-                    backdrop-filter: blur(12px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                    padding: 20px;
-                    animation: fadeIn 0.2s ease;
-                }
+            <DialogFooter className="p-5 pt-4 border-t border-white/10 flex gap-2.5 sm:flex-row">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onCancel}
+                    disabled={isPending}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:bg-white/[0.08] hover:text-foreground h-10 text-base font-semibold"
+                >
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="flex-1 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground border-0 h-10 text-base font-semibold"
+                >
+                    {isPending ? (
+                        <>
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            Creating...
+                        </>
+                    ) : (
+                        <>
+                            <Plus className="h-3.5 w-3.5 mr-1.5" />
+                            Create User
+                        </>
+                    )}
+                </Button>
+            </DialogFooter>
+        </form>
+    );
+}
 
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
+function EditFormBody({
+    form,
+    user,
+    isPending,
+    onSubmit,
+    onCancel,
+}: {
+    form: UseFormReturn<UserEditValues>;
+    user: User;
+    isPending: boolean;
+    onSubmit: (values: UserEditValues) => void;
+    onCancel: () => void;
+}) {
+    const {
+        register,
+        control,
+        handleSubmit,
+        formState: { errors },
+    } = form;
 
-                .modal-container {
-                    width: 100%;
-                    max-width: 480px;
-                    background: rgba(10, 31, 26, 0.95);
-                    border-radius: 16px;
-                    border: 1px solid rgba(52, 211, 153, 0.2);
-                    box-shadow:
-                            0 24px 48px rgba(0, 0, 0, 0.5),
-                            0 0 0 1px rgba(52, 211, 153, 0.1) inset;
-                    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
+    return (
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+            <div className="p-5 flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="first_name" className="text-sm text-muted-foreground">
+                            First Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="first_name"
+                            disabled={isPending}
+                            aria-invalid={!!errors.firstName}
+                            maxLength={100}
+                            {...register('firstName')}
+                            className="rounded-lg bg-white/5 border-white/10 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                        />
+                        <FieldError message={errors.firstName?.message} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="last_name" className="text-sm text-muted-foreground">
+                            Last Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="last_name"
+                            disabled={isPending}
+                            aria-invalid={!!errors.lastName}
+                            maxLength={100}
+                            {...register('lastName')}
+                            className="rounded-lg bg-white/5 border-white/10 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                        />
+                        <FieldError message={errors.lastName?.message} />
+                    </div>
+                </div>
 
-                @keyframes slideUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(16px) scale(0.98);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="username" className="text-sm text-muted-foreground">
+                        Username <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            id="username"
+                            disabled={isPending}
+                            aria-invalid={!!errors.username}
+                            maxLength={100}
+                            {...register('username')}
+                            className="rounded-lg bg-white/5 border-white/10 pl-8 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
+                        />
+                    </div>
+                    {errors.username ? (
+                        <FieldError message={errors.username.message} />
+                    ) : (
+                        <p className="text-xs text-muted-foreground">3–100 characters</p>
+                    )}
+                </div>
 
-                .modal-header {
-                    display: flex;
-                    align-items: flex-start;
-                    justify-content: space-between;
-                    padding: 24px 24px 20px;
-                    border-bottom: 1px solid rgba(52, 211, 153, 0.1);
-                }
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="email-display" className="text-sm text-muted-foreground">
+                        Email Address <span className="text-xs">(read-only)</span>
+                    </Label>
+                    <Input
+                        id="email-display"
+                        value={user.email}
+                        readOnly
+                        disabled
+                        className="rounded-lg bg-white/[0.03] border-white/10 text-base text-muted-foreground"
+                    />
+                </div>
 
-                .header-content {
-                    flex: 1;
-                }
+                <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                        Role <span className="text-red-500">*</span>
+                    </Label>
+                    <Controller
+                        control={control}
+                        name="role"
+                        render={({ field }) => (
+                            <RolePicker
+                                value={field.value}
+                                disabled={isPending}
+                                onChange={field.onChange}
+                            />
+                        )}
+                    />
+                    <FieldError message={errors.role?.message} />
+                </div>
 
-                .modal-title {
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    letter-spacing: -0.3px;
-                    margin-bottom: 4px;
-                }
+                <Controller
+                    control={control}
+                    name="isActive"
+                    render={({ field }) => (
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/10">
+                            <div className="flex flex-col gap-0.5">
+                                <Label htmlFor="is_active" className="text-base text-foreground">
+                                    Active account
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Disable to deactivate — login will be blocked with
+                                    ACCOUNT_INACTIVE.
+                                </p>
+                            </div>
+                            <Checkbox
+                                id="is_active"
+                                checked={field.value}
+                                onCheckedChange={(checked) => field.onChange(checked === true)}
+                                disabled={isPending}
+                                className="h-4 w-4 rounded-lg border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            />
+                        </div>
+                    )}
+                />
+            </div>
 
-                .modal-subtitle {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.5);
-                    font-weight: 400;
-                    line-height: 1.4;
-                }
-
-                .close-btn {
-                    width: 32px;
-                    height: 32px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: rgba(255, 255, 255, 0.05);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 8px;
-                    color: rgba(255, 255, 255, 0.6);
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    font-size: 18px;
-                }
-
-                .close-btn:hover {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #ffffff;
-                    border-color: rgba(255, 255, 255, 0.2);
-                }
-
-                .modal-content {
-                    padding: 24px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 18px;
-                }
-
-                .name-row {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 12px;
-                }
-
-                .input-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                }
-
-                .input-label {
-                    font-size: 12px;
-                    font-weight: 500;
-                    color: rgba(255, 255, 255, 0.7);
-                    letter-spacing: 0.2px;
-                }
-
-                .required {
-                    color: #ef4444;
-                    margin-left: 2px;
-                }
-
-                .optional {
-                    font-size: 11px;
-                    font-weight: 400;
-                    color: rgba(255, 255, 255, 0.4);
-                    font-style: italic;
-                }
-
-                .input-field {
-                    width: 100%;
-                    padding: 12px 14px;
-                    background: rgba(255, 255, 255, 0.05) !important;
-                    border: 1px solid rgba(52, 211, 153, 0.15);
-                    border-radius: 8px;
-                    font-size: 14px;
-                    color: #ffffff !important;
-                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                    outline: none;
-                    font-family: inherit;
-                }
-
-                .input-field::placeholder {
-                    color: rgba(255, 255, 255, 0.3);
-                }
-
-                .input-field:focus {
-                    border-color: #10b981;
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-                }
-
-                .input-field:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-
-                .input-field.error {
-                    border-color: #ef4444;
-                    background: rgba(239, 68, 68, 0.05) !important;
-                }
-
-                .input-field.error:focus {
-                    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-                }
-
-                /* Force autofill styles */
-                .input-field:-webkit-autofill,
-                .input-field:-webkit-autofill:hover,
-                .input-field:-webkit-autofill:focus,
-                .input-field:-webkit-autofill:active {
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: #ffffff !important;
-                    transition: background-color 5000s ease-in-out 0s;
-                    box-shadow: inset 0 0 20px 20px rgba(255, 255, 255, 0.05) !important;
-                    border-color: rgba(52, 211, 153, 0.15) !important;
-                }
-
-                .password-wrapper {
-                    position: relative;
-                }
-
-                .password-toggle {
-                    position: absolute;
-                    right: 10px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    background: transparent;
-                    border: none;
-                    color: rgba(255, 255, 255, 0.4);
-                    cursor: pointer;
-                    padding: 8px;
-                    font-size: 14px;
-                    transition: color 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                .password-toggle:hover {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-
-                .role-selector {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 10px;
-                }
-
-                .role-option {
-                    position: relative;
-                    cursor: pointer;
-                }
-
-                .role-option input[type="radio"] {
-                    position: absolute;
-                    opacity: 0;
-                    pointer-events: none;
-                }
-
-                .role-content {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 16px 12px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1.5px solid rgba(52, 211, 153, 0.15);
-                    border-radius: 10px;
-                    transition: all 0.2s ease;
-                }
-
-                .role-content i {
-                    font-size: 22px;
-                    color: rgba(255, 255, 255, 0.5);
-                    transition: all 0.2s ease;
-                }
-
-                .role-content span {
-                    font-size: 13px;
-                    font-weight: 500;
-                    color: rgba(255, 255, 255, 0.6);
-                    transition: all 0.2s ease;
-                }
-
-                .role-option:hover .role-content {
-                    background: rgba(255, 255, 255, 0.06);
-                    border-color: rgba(52, 211, 153, 0.3);
-                }
-
-                .role-option.selected .role-content {
-                    background: rgba(16, 185, 129, 0.12);
-                    border-color: #10b981;
-                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08);
-                }
-
-                .role-option.selected .role-content i {
-                    color: #10b981;
-                }
-
-                .role-option.selected .role-content span {
-                    color: #ffffff;
-                }
-
-                .error-text {
-                    font-size: 11px;
-                    color: #ef4444;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-
-                .error-text::before {
-                    content: '⚠';
-                    font-size: 12px;
-                }
-
-                .modal-actions {
-                    display: flex;
-                    gap: 10px;
-                    padding: 20px 24px 24px;
-                    border-top: 1px solid rgba(52, 211, 153, 0.1);
-                }
-
-                .modal-btn {
-                    flex: 1;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.15s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                    border: 1px solid;
-                }
-
-                .modal-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-
-                .modal-btn.cancel {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-color: rgba(255, 255, 255, 0.12);
-                    color: rgba(255, 255, 255, 0.7);
-                }
-
-                .modal-btn.cancel:hover:not(:disabled) {
-                    background: rgba(255, 255, 255, 0.08);
-                    border-color: rgba(255, 255, 255, 0.2);
-                    color: #ffffff;
-                }
-
-                .modal-btn.submit {
-                    background: linear-gradient(135deg, #047857, #10b981);
-                    border-color: transparent;
-                    color: white;
-                }
-
-                .modal-btn.submit:hover:not(:disabled) {
-                    background: linear-gradient(135deg, #059669, #34d399);
-                }
-
-                .modal-btn:active:not(:disabled) {
-                    transform: scale(0.98);
-                }
-
-                @media (max-width: 640px) {
-                    .modal-container {
-                        max-width: 100%;
-                    }
-
-                    .name-row {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .role-selector {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .modal-actions {
-                        flex-direction: column-reverse;
-                    }
-                }
-            `}</style>
-        </>
+            <DialogFooter className="p-5 pt-4 border-t border-white/10 flex gap-2.5 sm:flex-row">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onCancel}
+                    disabled={isPending}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:bg-white/[0.08] hover:text-foreground h-10 text-base font-semibold"
+                >
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="flex-1 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground border-0 h-10 text-base font-semibold"
+                >
+                    {isPending ? (
+                        <>
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            Updating...
+                        </>
+                    ) : (
+                        <>
+                            <Check className="h-3.5 w-3.5 mr-1.5" />
+                            Update User
+                        </>
+                    )}
+                </Button>
+            </DialogFooter>
+        </form>
     );
 }
