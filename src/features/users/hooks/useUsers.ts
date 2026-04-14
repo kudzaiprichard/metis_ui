@@ -21,7 +21,6 @@ const usersKeys = {
     list: (params?: ListUsersParams) => [...usersKeys.lists(), params] as const,
     details: () => [...usersKeys.all, 'detail'] as const,
     detail: (id: string) => [...usersKeys.details(), id] as const,
-    byEmail: (email: string) => [...usersKeys.all, 'email', email] as const,
 };
 
 /**
@@ -44,18 +43,6 @@ export const useUser = (userId: string) => {
         queryFn: () => usersApi.getById(userId),
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled: !!userId, // Only fetch if userId exists
-    });
-};
-
-/**
- * Hook to get user by email
- */
-export const useUserByEmail = (email: string) => {
-    return useQuery({
-        queryKey: usersKeys.byEmail(email),
-        queryFn: () => usersApi.getByEmail(email),
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        enabled: !!email, // Only fetch if email exists
     });
 };
 
@@ -100,7 +87,7 @@ export const useUpdateUser = () => {
 };
 
 /**
- * Hook to delete a user (soft delete)
+ * Hook to delete a user permanently (spec §5: DELETE is not reversible)
  */
 export const useDeleteUser = () => {
     const queryClient = useQueryClient();
@@ -113,27 +100,6 @@ export const useDeleteUser = () => {
         },
         onError: (error: ApiError) => {
             console.error('Delete user failed:', error.getFullMessage());
-        },
-    });
-};
-
-/**
- * Hook to restore a soft-deleted user
- */
-export const useRestoreUser = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (userId: string) => usersApi.restore(userId),
-        onSuccess: (restoredUser) => {
-            // Invalidate users list
-            queryClient.invalidateQueries({ queryKey: usersKeys.lists() });
-
-            // Update specific user detail cache
-            queryClient.setQueryData(usersKeys.detail(restoredUser.id), restoredUser);
-        },
-        onError: (error: ApiError) => {
-            console.error('Restore user failed:', error.getFullMessage());
         },
     });
 };
