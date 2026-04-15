@@ -1,24 +1,33 @@
 import Cookies from 'js-cookie';
 import { COOKIE_NAMES, COOKIE_OPTIONS } from '../constants';
 
+// Spec §2.5 returns plain JWT strings with no `expires_at` — derive cookie
+// expiry from the JWT's own `exp` claim (mirrors api-client.ts).
+function decodeJwtExpiry(jwt: string): Date | undefined {
+    try {
+        const payload = jwt.split('.')[1];
+        if (!payload) return undefined;
+        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const { exp } = JSON.parse(atob(base64)) as { exp?: number };
+        return typeof exp === 'number' ? new Date(exp * 1000) : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
  * Store authentication tokens in cookies
  * Called after successful login or register
  */
-export function setAuthTokens(accessToken: string, refreshToken: string, accessTokenExpiresAt: string) {
-    // Calculate expiry for access token cookie
-    const accessExpiry = new Date(accessTokenExpiresAt);
-
-    // Set access token cookie with expiry
+export function setAuthTokens(accessToken: string, refreshToken: string) {
     Cookies.set(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
         ...COOKIE_OPTIONS,
-        expires: accessExpiry,
+        expires: decodeJwtExpiry(accessToken),
     });
 
-    // Set refresh token cookie (30 days expiry - adjust based on your backend)
     Cookies.set(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
         ...COOKIE_OPTIONS,
-        expires: 30, // 30 days
+        expires: decodeJwtExpiry(refreshToken) ?? 30,
     });
 }
 

@@ -8,7 +8,7 @@ export interface ErrorDetail {
     code?: string;
     details?: string[];
     status: number;
-    field_errors?: Record<string, string[]>;
+    fieldErrors?: Record<string, string[]>;
 }
 
 /**
@@ -28,8 +28,8 @@ export interface PaginatedResponse<T = unknown> extends ApiResponse<T[]> {
     pagination?: {
         page: number;
         total: number;
-        page_size: number;
-        total_pages: number;
+        pageSize: number;
+        totalPages: number;
     };
 }
 
@@ -59,7 +59,7 @@ export class ApiError extends Error {
         this.statusCode = error.status;
         this.code = error.code;
         this.details = error.details;
-        this.fieldErrors = error.field_errors;
+        this.fieldErrors = error.fieldErrors;
         this.backendMessage = message;  // Store backend message separately
 
         // Maintains proper stack trace for where our error was thrown
