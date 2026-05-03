@@ -68,11 +68,12 @@ export async function proxy(request: NextRequest) {
     // Get access token from cookies
     const token = request.cookies.get('access_token')?.value;
 
-    // Redirect to login if no token (not authenticated)
+    // Redirect to login if no token (not authenticated). Don't attach an
+    // error param here — a fresh visit shouldn't surface a toast. Only the
+    // expired-token case below warrants user-facing messaging.
     if (!token) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('redirect', pathname);
-        loginUrl.searchParams.set('error', 'Please log in to continue');
         return NextResponse.redirect(loginUrl);
     }
 
