@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -56,20 +57,22 @@ export function Breadcrumb() {
         <BreadcrumbRoot>
             <BreadcrumbList>
                 {breadcrumbs.map((crumb, index) => (
-                    <BreadcrumbItem key={index}>
+                    <Fragment key={index}>
                         {index > 0 && <BreadcrumbSeparator />}
-                        {crumb.isLast ? (
-                            <BreadcrumbPage className="text-primary font-medium">
-                                {crumb.label}
-                            </BreadcrumbPage>
-                        ) : (
-                            <BreadcrumbLink asChild>
-                                <Link href={crumb.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <BreadcrumbItem>
+                            {crumb.isLast ? (
+                                <BreadcrumbPage className="text-primary font-medium">
                                     {crumb.label}
-                                </Link>
-                            </BreadcrumbLink>
-                        )}
-                    </BreadcrumbItem>
+                                </BreadcrumbPage>
+                            ) : (
+                                <BreadcrumbLink asChild>
+                                    <Link href={crumb.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                                        {crumb.label}
+                                    </Link>
+                                </BreadcrumbLink>
+                            )}
+                        </BreadcrumbItem>
+                    </Fragment>
                 ))}
             </BreadcrumbList>
         </BreadcrumbRoot>
