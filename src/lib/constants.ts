@@ -1,14 +1,18 @@
 // API Configuration
 export const API_CONFIG = {
     DEV_BASE_URL: 'http://127.0.0.1:8000/api/v1',
-    PROD_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
+    BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
     TIMEOUT: 30000, // 30 seconds
 } as const;
 
-// Get the appropriate base URL based on environment
+// Honor NEXT_PUBLIC_API_BASE_URL in every environment so devs can point at a
+// non-default backend (e.g. a teammate's port, a staging host) via .env.local.
+// Fall back to the dev default only when the env var is unset and we're not
+// in a production build — a missing prod URL is a misconfiguration, not a
+// reason to silently target localhost.
 export const getApiBaseUrl = (): string => {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    return isDevelopment ? API_CONFIG.DEV_BASE_URL : API_CONFIG.PROD_BASE_URL;
+    if (API_CONFIG.BASE_URL) return API_CONFIG.BASE_URL;
+    return process.env.NODE_ENV === 'development' ? API_CONFIG.DEV_BASE_URL : '';
 };
 
 // User Roles
